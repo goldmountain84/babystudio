@@ -12,6 +12,7 @@ import {
   VOCAB_SEED,
 } from "@/lib/adminData";
 import { getApp, THEME_APPS } from "@/lib/data";
+import { GPT_ENGINE, PRESET_AUTHOR, PRESET_PACK } from "@/lib/promptPresets";
 
 // ④ 안전 레이어 — DB가 아닌 배포 아티팩트 상수 (설계서 §7: 콘솔·DB 어느 경로로도 수정 불가)
 const SAFETY_LAYER =
@@ -88,6 +89,46 @@ export function seedPrompts(db: DB): void {
       Date.now()
     );
   }
+  // ── GPT·1K 프리셋 팩 = 기본 설정 (2026.08 유행 프롬프트 리서치) ──
+  // 각 프리셋이 대응 테마의 live 버전이 된다. 테마당 1회(author 마커로 멱등).
+  const hasPack = db.prepare(
+    "SELECT 1 FROM prompt_versions WHERE theme_id = ? AND author = ? LIMIT 1"
+  );
+  for (const preset of PRESET_PACK) {
+    if (hasPack.get(preset.themeId, PRESET_AUTHOR)) continue;
+    if (!getApp(preset.themeId)) continue; // 카탈로그에 없는 테마 방어
+    withTx(db, () => {
+      const max = db
+        .prepare("SELECT COALESCE(MAX(version_no), 0) AS m FROM prompt_versions WHERE theme_id = ?")
+        .get(preset.themeId) as { m: number };
+      const no = max.m + 1;
+      // 기존 live는 archived로 — 팩 버전이 새 live (one_live_per_theme 유지)
+      db.prepare(
+        "UPDATE prompt_versions SET status = 'archived' WHERE theme_id = ? AND status = 'live'"
+      ).run(preset.themeId);
+      db.prepare(
+        `INSERT INTO prompt_versions (id, theme_id, version_no, status, positive_tpl, theme_negative, model_params, author, approver, created_at)
+         VALUES (?, ?, ?, 'live', ?, '', ?, ?, ?, ?)`
+      ).run(
+        `${preset.themeId}@v${no}`,
+        preset.themeId,
+        no,
+        preset.prompt,
+        JSON.stringify({
+          engine: GPT_ENGINE,
+          resolution: preset.aspect === "square" ? "1024x1024" : "1024x1536",
+          quality: "1K",
+          pose: preset.pose,
+          presetTitle: preset.title,
+        }),
+        PRESET_AUTHOR,
+        "리서치",
+        Date.now()
+      );
+      audit(db, "시스템", `프리셋 팩 live 적용 (${preset.title})`, `${preset.themeId}@v${no}`);
+    });
+  }
+
   // 지표 백필: live/canary인데 지표 행이 없는 버전 (기존 DB 파일 호환)
   const missing = db
     .prepare(

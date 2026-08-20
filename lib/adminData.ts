@@ -39,6 +39,7 @@ export interface PromptVersion {
 }
 
 export const ENGINES = [
+  "GPT 이미지 (1K)", // 프리셋 팩 기본 (2026.08 리서치 — 단일 모델·1K 고정)
   "Flux LoRA fine-tune",
   "InstantID zero-shot",
   "외부 API (Gemini image)",

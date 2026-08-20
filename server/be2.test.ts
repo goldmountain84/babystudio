@@ -31,12 +31,16 @@ describe("전 테마 시드 (BE-2 · TC)", () => {
     }
   });
 
-  it("기존 체인이 있는 테마는 시드 v1이 덮지 않음", () => {
+  it("기존 체인은 보존(archived), live는 프리셋 팩이 차지", () => {
     seedPrompts(db);
+    const v14 = db
+      .prepare("SELECT status FROM prompt_versions WHERE id='dol-hanbok@v14'")
+      .get() as { status: string };
+    expect(v14.status).toBe("archived"); // append-only — 구 체인 보존
     const live = db
-      .prepare("SELECT id FROM prompt_versions WHERE theme_id='dol-hanbok' AND status='live'")
-      .get() as { id: string };
-    expect(live.id).toBe("dol-hanbok@v14"); // PROMPT_SEED의 live 유지
+      .prepare("SELECT author FROM prompt_versions WHERE theme_id='dol-hanbok' AND status='live'")
+      .get() as { author: string };
+    expect(live.author).toBe("프리셋팩-GPT1K"); // 기본 설정 = 팩
   });
 });
 

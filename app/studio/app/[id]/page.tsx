@@ -202,7 +202,7 @@ export default function AppSheet({
 
           <p className="mt-4 text-[11px] leading-relaxed text-[#a99ba5]">
             같은 테마도 매번 다른 컷이 나와요 · 생성물에는 AI 표시(C2PA)가
-            포함돼요
+            포함돼요 · 생성: GPT 이미지 · 1K
           </p>
         </div>
       </div>

@@ -183,6 +183,7 @@ export function tick(db: DB, jobId: string): JobRow {
       // BE-3 (IN-06): 엔진별 원가 기록 — 벤더 협상·자체 GPU 판단의 데이터
       const asm = JSON.parse(job.options ? (db.prepare("SELECT assembled_prompt FROM jobs WHERE id = ?").get(jobId) as { assembled_prompt: string }).assembled_prompt : "{}") as { params?: { engine?: string } };
       const ENGINE_COST: Record<string, number> = {
+        "GPT 이미지 (1K)": 0.07,
         "Flux LoRA fine-tune": 0.08,
         "InstantID zero-shot": 0.05,
         "외부 API (Gemini image)": 0.12,

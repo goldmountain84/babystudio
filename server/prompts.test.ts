@@ -47,7 +47,8 @@ describe("카나리 라우팅", () => {
 
 describe("조립", () => {
   it("변수 치환 + 안전 레이어가 항상 포함", () => {
-    const asm = assemble(db, "dol-hanbok", "user-A", "서연이", "2025-08-21", {
+    // dol-hanbok live는 프리셋 팩(변수 없음) — 변수 템플릿 유지 테마로 검증
+    const asm = assemble(db, "angel-wings", "user-A", "서연이", "2025-08-21", {
       outfit: "연분홍",
       background: "궁궐 마당",
     });

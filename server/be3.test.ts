@@ -78,9 +78,9 @@ describe("영상 워커 (V-01·02)", () => {
 });
 
 describe("원가 기록 (IN-06)", () => {
-  it("잡 완료 시 엔진별 cost_usd 기록", () => {
+  it("잡 완료 시 엔진별 cost_usd 기록 (프리셋 팩 기본 = GPT $0.07/컷)", () => {
     const j = db.prepare("SELECT cost_usd FROM jobs WHERE type='image'").get() as { cost_usd: number };
-    expect(j.cost_usd).toBeCloseTo(0.08 * 14); // LoRA $0.08 × 내부 14컷
+    expect(j.cost_usd).toBeCloseTo(0.07 * 14);
   });
 });
 
