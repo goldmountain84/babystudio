@@ -125,6 +125,19 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL
 );
 
+-- S12-C: 테마 라이프사이클 상태기계 (TC-01) — 전이는 체크리스트 게이트 통과 시에만
+CREATE TABLE IF NOT EXISTS theme_stages (
+  theme_id TEXT PRIMARY KEY,
+  stage TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS theme_checklists (
+  theme_id TEXT NOT NULL,
+  item_idx INTEGER NOT NULL,
+  checked INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (theme_id, item_idx)
+);
+
 -- BE-4: 구독 빌링 (P-02) — 지급은 웹훅 경유(settleOrder), 갱신은 lazy 배치
 CREATE TABLE IF NOT EXISTS subscriptions (
   user_id TEXT PRIMARY KEY,

@@ -81,7 +81,12 @@ npm run dev   # http://localhost:3000
 - S12-B 프롬프트 컨트롤 센터: 목록·상세가 서버 API 기반 — `GET /api/admin/prompts-overview`, `GET /api/admin/versions/detail`(원문 열람도 감사), 전이는 기존 `/versions/:id/:action`(promote에 사유), **카나리 배치 틱 서버화** `POST /api/admin/themes/:id/canary-tick`(표본 +50 → 200 도달 시 서버가 자동 승격/중단 판정, `version_metrics` 테이블). 에디터 저장은 서버 린터 422를 그대로 표시
 - S12-F 사용자·CS 콘솔: `GET /api/admin/users`(실사용자), `GET /api/admin/users/:id?view_reason=`(사유 없으면 400 — DF-01 서버 강제), `POST /api/admin/users/:id/credits`(100C 초과 리드만 — 403 FOUR_EYES_REQUIRED)
 - C2PA 스텁(TR-02): 후처리에서 `assets.c2pa_manifest` 기록 (실서비스: KMS 서명 매니페스트)
-- 아직 로컬 목: S12-C 테마 CMS 상태 전이, 대시보드 목표 KPI 타일·경보
+- (해소됨) S12-C 상태 전이·대시보드 KPI/경보·트렌딩 → 아래 참조
+
+**잔여 목 서버화 (전면 실데이터)**
+- S12-C 상태 전이: `theme_stages`·`theme_checklists` 테이블 + `GET/POST /api/admin/themes-board` — 체크리스트 게이트 422, GA 리드 승인 403을 서버가 강제
+- S12-A 대시보드: 경보=서버 규칙 엔진(live 선택률<50% 긴급·모더레이션 SLA·원가 예산·카나리 안내), KPI 타일=DB 실집계(유사도 평균·C2PA 커버리지·구매 전환율 — 파기 계정 제외), 주간 차트=jobs 일별 실집계
+- 트렌딩(H-03): `/api/themes`의 7일 theme_run 실행수 실집계 → 스튜디오 자동 큐레이션 (데이터 없으면 플래그 폴백)
 
 **BE-3 (성장 장치) 반영분**
 - 영상 워커 서버화(V-01·02): `clips` 테이블 + `POST/GET /api/clips` — **가격은 서버가 계산**(5초 10C/10초 18C/15초 25C/타임랩스 30C, 클라이언트 값 불신), 소스 컷 소유권·타임랩스 최소 4컷 서버 검증, hold→confirm, 미리보기는 0C·3초 강제, C2PA·원가 기록. 영상 스튜디오 UI는 접수와 폴링만

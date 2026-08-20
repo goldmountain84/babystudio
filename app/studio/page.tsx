@@ -15,6 +15,17 @@ export default function StudioHome() {
   const { hydrated, baby } = useStore();
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
+  const [runs7d, setRuns7d] = useState<Map<string, number>>(new Map());
+
+  // 트렌딩 실데이터 (H-03): 7일 실행수 기반 자동 큐레이션
+  useEffect(() => {
+    void fetch("/api/themes")
+      .then((r) => r.json())
+      .then((b: { themes: { id: string; runs7d: number }[] }) => {
+        setRuns7d(new Map(b.themes.map((t) => [t.id, t.runs7d])));
+      })
+      .catch(() => {});
+  }, []);
 
   // 아기 생일 기준 현재 시기 탭 자동 선택 (H-01)
   useEffect(() => {
@@ -36,7 +47,14 @@ export default function StudioHome() {
     return list;
   }, [tab, query]);
 
-  const trending = THEME_APPS.filter((a) => a.trending);
+  // 실행수 상위 5종 — 데이터가 없으면 큐레이션 플래그로 폴백
+  const ranked = [...THEME_APPS].sort(
+    (a, b) => (runs7d.get(b.id) ?? 0) - (runs7d.get(a.id) ?? 0)
+  );
+  const hasRuns = (runs7d.get(ranked[0]?.id) ?? 0) > 0;
+  const trending = hasRuns
+    ? ranked.slice(0, 5)
+    : THEME_APPS.filter((a) => a.trending);
 
   return (
     <main className="pb-20">
@@ -117,13 +135,24 @@ export default function StudioHome() {
 
       {/* 트렌딩 */}
       <div className="px-6 pb-8 pt-8 md:px-10">
-        <b className="text-sm">🔥 이번 주 트렌딩 앱</b>
+        <b className="text-sm">
+          🔥 이번 주 트렌딩 앱{" "}
+          {hasRuns && (
+            <span className="text-[11px] font-medium text-sub">(7일 실행수 기준)</span>
+          )}
+        </b>
         <div className="mt-2.5 flex gap-3 overflow-x-auto pb-2">
           {trending.map((a) => (
             <Link key={a.id} href={`/studio/app/${a.id}`} className="flex-none">
               <PhotoArt
                 gradient={a.gradient}
-                caption={a.seasonDday != null ? `${a.name} (시즌 D-${a.seasonDday})` : a.name}
+                caption={
+                  hasRuns && (runs7d.get(a.id) ?? 0) > 0
+                    ? `${a.name} · ${runs7d.get(a.id)}회`
+                    : a.seasonDday != null
+                      ? `${a.name} (시즌 D-${a.seasonDday})`
+                      : a.name
+                }
                 className="h-[84px] w-[130px] transition-transform hover:-translate-y-0.5"
               />
             </Link>

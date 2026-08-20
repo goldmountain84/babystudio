@@ -1,17 +1,21 @@
 "use client";
 
-// S12-C 테마 라이프사이클 CMS — 상태기계(체크리스트 게이트)·시즌 캘린더·랭킹 튜너
+// S12-C 테마 라이프사이클 CMS — 상태기계가 서버로 이동 (theme_stages·checklists)
+// 게이트·GA 리드 승인은 API가 강제. 시즌 캘린더·랭킹 튜너는 데모 UI.
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { THEME_APPS } from "@/lib/data";
-import {
-  CHECKLIST_ITEMS,
-  LIFECYCLE_STAGES,
-  type LifecycleStage,
-} from "@/lib/adminData";
 import { useAdmin } from "@/lib/adminStore";
+import { adminApi } from "@/lib/adminApi";
 import PhotoArt from "@/components/PhotoArt";
+
+interface Board {
+  stages: Record<string, string>;
+  checklist: Record<string, boolean[]>;
+  items: string[];
+  lifecycle: string[];
+}
 
 const SEASON_CAL = [
   { month: "9월", theme: "단풍 소풍", state: "draft" },
@@ -22,45 +26,68 @@ const SEASON_CAL = [
 ];
 
 export default function ThemeCms() {
-  const admin = useAdmin();
-  const [weights, setWeights] = useState({ season: 3, hot: 2, fresh: 1 });
+  const { role, hydrated } = useAdmin();
+  const [board, setBoard] = useState<Board | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
+  const [weights, setWeights] = useState({ season: 3, hot: 2, fresh: 1 });
   const [toast, setToast] = useState<string | null>(null);
 
-  if (!admin.hydrated) return null;
+  const load = useCallback(async () => {
+    const r = await adminApi("/themes-board", role);
+    if (r.ok) { setBoard(r.body as unknown as Board); setError(null); }
+    else setError((r.body as { message?: string }).message ?? "로드 실패");
+  }, [role]);
 
-  const stageOf = (id: string): LifecycleStage => admin.themeStage[id] ?? "GA";
-  const gaCount = THEME_APPS.filter((a) => stageOf(a.id) === "GA").length;
-  const sel = THEME_APPS.find((a) => a.id === selId);
-  const selStage = sel ? stageOf(sel.id) : null;
-  const selChecks = sel
-    ? (admin.checklist[sel.id] ?? CHECKLIST_ITEMS.map(() => false))
-    : [];
-  const selNext =
-    selStage && LIFECYCLE_STAGES.indexOf(selStage) < LIFECYCLE_STAGES.length - 1
-      ? LIFECYCLE_STAGES[LIFECYCLE_STAGES.indexOf(selStage) + 1]
-      : null;
+  useEffect(() => {
+    if (hydrated) void load();
+  }, [hydrated, load]);
 
   const flash = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 3200);
   };
 
+  const act = async (themeId: string, action: "check" | "advance", idx?: number) => {
+    const r = await adminApi("/themes-board", role, {
+      method: "POST",
+      body: JSON.stringify({ themeId, action, idx }),
+    });
+    if (!r.ok && action === "advance") flash(`🚫 ${(r.body as { message?: string }).message}`);
+    if (r.ok && action === "advance") {
+      flash(`✓ ${(r.body as { next: string }).next}(으)로 전이 — 서버 감사로그 기록`);
+    }
+    await load();
+  };
+
+  if (!hydrated) return null;
+
+  const stageOf = (id: string) => board?.stages[id] ?? "GA";
+  const sel = THEME_APPS.find((a) => a.id === selId);
+  const selStage = sel ? stageOf(sel.id) : null;
+  const selChecks = sel ? (board?.checklist[sel.id] ?? []) : [];
+  const lifecycle = board?.lifecycle ?? [];
+  const selNext =
+    selStage && lifecycle.indexOf(selStage) < lifecycle.length - 1
+      ? lifecycle[lifecycle.indexOf(selStage) + 1]
+      : null;
+  const gaCount = THEME_APPS.filter((a) => stageOf(a.id) === "GA").length;
+
   return (
     <main className="mx-auto max-w-[1120px] px-6 py-6">
       <div className="flex items-baseline gap-3">
         <h1 className="text-[16px] font-extrabold">🗂 테마 라이프사이클 CMS</h1>
         <span className="text-[11.5px] text-sub">
-          상태 전이는 체크리스트 게이트를 통과해야 하며, GA 전이는 리드 승인
-          필요 (TC-01) · 현재 역할: <b>{admin.role}</b>
+          서버 상태기계(TC-01) — 체크리스트 게이트·GA 리드 승인은 API가 강제 · 현재 역할: <b>{role}</b>
         </span>
       </div>
 
-      {/* 라이프사이클 보드 */}
+      {error && <div className="alert-crit mt-4 rounded-lg px-4 py-3 text-[12.5px]">🔴 {error}</div>}
+
       <section className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white p-5">
         <b className="text-[13px]">라이프사이클 보드 — GA {gaCount}종 운영 중 · 카드를 누르면 전이 패널이 열려요</b>
         <div className="mt-3 flex gap-3" style={{ minWidth: 900 }}>
-          {LIFECYCLE_STAGES.map((stage) => {
+          {lifecycle.map((stage) => {
             const items = THEME_APPS.filter((a) => stageOf(a.id) === stage);
             return (
               <div key={stage} className="w-[150px] flex-none rounded-xl bg-cream p-2.5">
@@ -72,14 +99,12 @@ export default function ThemeCms() {
                     <button
                       key={a.id}
                       onClick={() => setSelId(a.id === selId ? null : a.id)}
-                      className={`block cursor-pointer text-left ${selId === a.id ? "ring-2 ring-rose rounded-lg" : ""}`}
+                      className={`block cursor-pointer text-left ${selId === a.id ? "rounded-lg ring-2 ring-rose" : ""}`}
                     >
                       <PhotoArt gradient={a.gradient} caption={a.name} className="h-[52px] !rounded-lg text-[10px]" />
                     </button>
                   ))}
-                  {items.length > 4 && (
-                    <p className="text-center text-[10.5px] text-sub">+{items.length - 4}종</p>
-                  )}
+                  {items.length > 4 && <p className="text-center text-[10.5px] text-sub">+{items.length - 4}종</p>}
                   {items.length === 0 && <p className="py-3 text-center text-[10.5px] text-[#c5bac2]">—</p>}
                 </div>
               </div>
@@ -87,8 +112,7 @@ export default function ThemeCms() {
           })}
         </div>
 
-        {/* 전이 패널 (TC-01 게이트) */}
-        {sel && selStage && (
+        {sel && selStage && board && (
           <div className="fadeup mt-4 rounded-xl border border-rose/40 bg-[#fdf8f5] px-5 py-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <b className="text-[13px]">{sel.name}</b>
@@ -104,15 +128,15 @@ export default function ThemeCms() {
               </Link>
             </div>
             <p className="mt-2 text-[11px] font-bold text-sub">
-              전이 게이트 체크리스트 ({selChecks.filter(Boolean).length}/{CHECKLIST_ITEMS.length})
+              전이 게이트 체크리스트 ({selChecks.filter(Boolean).length}/{board.items.length}) — 서버 저장
             </p>
             <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
-              {CHECKLIST_ITEMS.map((item, i) => (
+              {board.items.map((item, i) => (
                 <label key={item} className="flex cursor-pointer items-center gap-1.5 text-[12px]">
                   <input
                     type="checkbox"
                     checked={selChecks[i] ?? false}
-                    onChange={() => admin.toggleCheck(sel.id, i)}
+                    onChange={() => void act(sel.id, "check", i)}
                     className="accent-rose"
                   />
                   {item}
@@ -123,16 +147,12 @@ export default function ThemeCms() {
               <button
                 className="cta !py-1.5 !text-[11.5px]"
                 disabled={!selNext}
-                onClick={() => {
-                  const r = admin.advanceStage(sel.id);
-                  if (r.ok) flash(`✓ ${sel.name} — ${selStage} → ${r.next} 전이 완료 (감사로그 기록)`);
-                  else flash(`🚫 전이 거부 — ${r.reason}`);
-                }}
+                onClick={() => void act(sel.id, "advance")}
               >
                 {selNext ? `${selNext}(으)로 전이` : "최종 단계"}
               </button>
               <span className="text-[10.5px] text-sub">
-                미완 항목이 있으면 전이가 거부되고 사유가 표시됩니다 · GA 전이는 리드 역할 필요
+                미완 항목은 서버가 422로 거부 · GA 전이는 리드 역할 필요 (403)
               </span>
             </div>
           </div>
@@ -140,7 +160,6 @@ export default function ThemeCms() {
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {/* 시즌 캘린더 */}
         <section className="rounded-2xl border border-line bg-white p-5">
           <b className="text-[13px]">시즌 캘린더 (TC-02)</b>
           <p className="mt-1 text-[11px] text-sub">배치하면 노출 시작·종료·D-n 뱃지·얼리액세스가 자동 스케줄링됩니다</p>
@@ -155,17 +174,14 @@ export default function ThemeCms() {
           </div>
         </section>
 
-        {/* 랭킹 튜너 */}
         <section className="rounded-2xl border border-line bg-white p-5">
           <b className="text-[13px]">노출 랭킹 튜너 (TC-03)</b>
-          <p className="mt-1 text-[11px] text-sub">정렬 점수 = 시즌×{weights.season} + 인기×{weights.hot} + 신규×{weights.fresh} · 변경 즉시 반영 + 이력 기록</p>
+          <p className="mt-1 text-[11px] text-sub">
+            정렬 점수 = 시즌×{weights.season} + 인기×{weights.hot} + 신규×{weights.fresh} · 트렌딩은 7일 실행수 실집계(H-03)
+          </p>
           <div className="mt-4 flex flex-col gap-4">
             {(
-              [
-                ["season", "시즌 가중치"],
-                ["hot", "인기 가중치"],
-                ["fresh", "신규 가중치"],
-              ] as const
+              [["season", "시즌 가중치"], ["hot", "인기 가중치"], ["fresh", "신규 가중치"]] as const
             ).map(([key, label]) => (
               <label key={key} className="text-[12px] font-bold text-sub">
                 {label} <b className="num text-ink">{weights[key]}</b>
@@ -177,9 +193,6 @@ export default function ThemeCms() {
               </label>
             ))}
           </div>
-          <p className="mt-3 rounded-lg bg-cream px-3 py-2 text-[11px] text-sub">
-            수동 핀: 트렌딩 1번 슬롯 = <b>돌잔치 한복</b> (08-25까지 고정) · 하위 10% 테마는 분기별 sunset 후보
-          </p>
         </section>
       </div>
 
