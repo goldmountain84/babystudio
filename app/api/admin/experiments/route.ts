@@ -4,6 +4,7 @@
 
 import { getDb } from "@/server/db";
 import { seedPrompts } from "@/server/prompts";
+import { priceExperimentReport, PKG_EXPERIMENT } from "@/server/priceExperiment";
 import { ok, err, adminCtx } from "@/server/http";
 
 const ALLOWED = new Set(["운영자", "리드"]);
@@ -36,21 +37,15 @@ export async function GET(req: Request) {
     )
     .all();
 
+  // BE-4: 가격 실험 실집계 — 배정(experiment_assignments) × 구매(purchase 이벤트 variant 태그)
   return ok({
     running,
     history,
-    fixtures: [
-      {
-        name: "스튜디오 패키지 ₩19,900 vs ₩17,900 (신규 한정)",
-        kind: "가격",
-        metricName: "무료→유료 전환율 %",
-        variants: [
-          { name: "₩19,900", traffic: 50, metric: 7.4, samples: 1410 },
-          { name: "₩17,900", traffic: 50, metric: 8.1, samples: 1385 },
-        ],
-        minSamples: 2000,
-        note: "가격 실험 인프라는 BE-4 — 데모 픽스처",
-      },
-    ],
+    priceExperiment: {
+      id: PKG_EXPERIMENT.id,
+      name: PKG_EXPERIMENT.name,
+      metricName: "구매 전환율 % (배정 대비)",
+      variants: priceExperimentReport(db),
+    },
   });
 }

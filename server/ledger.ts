@@ -137,13 +137,14 @@ export function reconcile(db: DB, userId: string): { ok: boolean; brokenAt?: num
   return { ok: true };
 }
 
-/** 결제 웹훅 지급 — order_id 멱등 (설계서 §4.1) */
+/** 결제 웹훅 지급 — order_id 멱등 (설계서 §4.1). meta: 실험 태깅 등 이벤트 속성 */
 export function settleOrder(
   db: DB,
   orderId: string,
   userId: string,
   credits: number,
-  amount: number
+  amount: number,
+  meta?: Record<string, unknown>
 ): { granted: boolean } {
   return withTx(db, () => {
     const exists = db.prepare("SELECT id FROM orders WHERE id = ?").get(orderId);
@@ -151,8 +152,8 @@ export function settleOrder(
     db.prepare(
       "INSERT INTO orders (id, user_id, credits, amount, status, created_at) VALUES (?, ?, ?, ?, 'paid', ?)"
     ).run(orderId, userId, credits, amount, Date.now());
-    grant(db, userId, credits, "order", orderId, `크레딧 팩 구매 (₩${amount})`);
-    trackEvent(db, "purchase", userId, { orderId, credits, amount });
+    grant(db, userId, credits, "order", orderId, `크레딧 구매 (₩${amount})`);
+    trackEvent(db, "purchase", userId, { orderId, credits, amount, ...(meta ?? {}) });
     return { granted: true };
   });
 }

@@ -125,6 +125,40 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL
 );
 
+-- BE-4: 구독 빌링 (P-02) — 지급은 웹훅 경유(settleOrder), 갱신은 lazy 배치
+CREATE TABLE IF NOT EXISTS subscriptions (
+  user_id TEXT PRIMARY KEY,
+  plan TEXT NOT NULL DEFAULT 'membership',
+  status TEXT NOT NULL CHECK (status IN ('active','cancelled')),
+  cycle INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  renews_at INTEGER NOT NULL,      -- active: 다음 갱신 / cancelled: 혜택 종료 시각
+  cancelled_at INTEGER
+);
+
+-- BE-4: CRM 저니 (§3.2) — 알림톡의 데모 대체. key로 멱등 발송
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  key TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('dday','job_done','expiry','season')),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  link TEXT,
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  UNIQUE(user_id, key)
+);
+
+-- BE-4: 실험 배정 (DX-03) — 신규 사용자 한정, 배정 후 불변
+CREATE TABLE IF NOT EXISTS experiment_assignments (
+  user_id TEXT NOT NULL,
+  experiment TEXT NOT NULL,
+  variant TEXT NOT NULL,
+  assigned_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, experiment)
+);
+
 -- BE-3: 영상 클립 (V-01·02) — 사진 잡과 동일한 hold→confirm 과금 모델
 CREATE TABLE IF NOT EXISTS clips (
   id TEXT PRIMARY KEY,

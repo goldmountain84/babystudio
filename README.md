@@ -88,7 +88,11 @@ npm run dev   # http://localhost:3000
 - 실험 플랫폼 서버화(S12-D): `GET /api/admin/experiments` — 진행 실험 = 카나리 테마(version_metrics 파생), 이력 = 감사로그의 승격/중단 이벤트. 가격 실험은 BE-4 픽스처
 - 원가 기록(IN-06): 잡 완료 시 엔진별 `jobs.cost_usd`(LoRA $0.08/컷 등), 클립 `cost_usd`($0.12/초) → stats의 24h 원가 실집계 → 대시보드 표시
 - 리컨실 배치(IN-02): `POST /api/admin/reconcile`(리드) — 전 사용자 원장 체인 검증 + 24h 미결 hold 강제 반환. 대시보드 버튼
-- 잔여(BE-4): 카카오 알림톡 CRM 저니, 구독 빌링, 가격 실험 인프라, 굿즈 파트너 API
+**BE-4 (스케일) 반영분**
+- 구독 빌링(P-02): `subscriptions` 테이블 + `POST /api/subscriptions(/cancel)` — 지급은 주기별 멱등 order id로 **웹훅 경로(settleOrder)만 사용**, lazy 갱신 배치(`/me` 접근 시 경과 주기 일괄 지급), 해지는 기간만료·잔여 크레딧 유지(2클릭). **멤버십 전용 테마는 잡 생성 시 서버가 강제**
+- CRM 저니(§3.2): `notifications` 테이블 + D-day 저니 엔진(D-30/14/7/D-day, key 멱등) + 생성 완료 알림 → 네비게이션 알림 센터(🔔). 실서비스: 카카오 알림톡+웹푸시
+- 가격 실험 인프라(DX): `experiment_assignments` 해시 버킷(신규 한정·배정 불변), **패키지 가격은 서버 배정이 확정**(클라이언트 금액 불신), purchase 이벤트 variant 태깅 → 어드민 실험에 배정×구매 전환율 실집계
+- 잔여(외부 연동 전제): 실제 알림톡/PG 정기결제 연동, 굿즈 파트너 API, i18n, SOC 2
 
 ## 실서비스 전환 시 교체 지점
 

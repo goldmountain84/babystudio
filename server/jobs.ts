@@ -6,6 +6,8 @@ import { type DB, withTx, newId, trackEvent } from "./db";
 import { hold, confirmHold, refundHold, LedgerError } from "./ledger";
 import { assemble, seedPrompts } from "./prompts";
 import { flagIfGrayZone } from "./moderation";
+import { pushNotification } from "./notifications";
+import { isMember } from "./subscriptions";
 import { getApp } from "@/lib/data";
 
 // 시뮬레이션 타이밍 (실서비스: 워커 이벤트)
@@ -65,6 +67,10 @@ export function createImageJob(
   seedPrompts(db);
   const app = getApp(params.themeId);
   if (!app) throw new JobError("BAD_REQUEST", `없는 테마: ${params.themeId}`);
+  // BE-4 (P-02): 멤버십 전용 테마 서버 강제 — 클라이언트 검증은 UX일 뿐
+  if (app.memberOnly && !isMember(db, params.userId)) {
+    throw new JobError("BAD_REQUEST", "멤버십 전용 테마입니다 — 구독 후 이용할 수 있어요");
+  }
 
   // 멱등: 같은 키 재제출 → 기존 잡 반환 (설계서 §5)
   if (params.idempotencyKey) {
@@ -192,6 +198,16 @@ export function tick(db: DB, jobId: string): JobRow {
         generated: total,
         gate_pass_min: gateMin,
       });
+      // BE-4: 생성 완료 알림 (실서비스: 카카오 알림톡 + 웹푸시)
+      pushNotification(
+        db,
+        job.user_id,
+        `job-${jobId}`,
+        "job_done",
+        "화보가 완성됐어요 ✨",
+        `${getApp(job.theme_id ?? "")?.name ?? "화보"} ${job.requested_cuts}컷이 준비됐어요`,
+        `/album/item/${jobId}`
+      );
     });
   } else {
     db.prepare("UPDATE jobs SET status = ? WHERE id = ?").run(next, jobId);

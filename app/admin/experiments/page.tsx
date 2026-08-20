@@ -14,14 +14,14 @@ interface RunningRow {
   live_id: string; live_best: number | null; live_samples: number | null;
 }
 interface HistoryRow { actor: string; action: string; target: string; created_at: number }
-interface Fixture {
-  name: string; kind: string; metricName: string; minSamples: number; note: string;
-  variants: { name: string; traffic: number; metric: number; samples: number }[];
+interface PriceExp {
+  id: string; name: string; metricName: string;
+  variants: { name: string; price: number; assigned: number; purchases: number; conversion: number }[];
 }
 
 export default function Experiments() {
   const { role, hydrated } = useAdmin();
-  const [data, setData] = useState<{ running: RunningRow[]; history: HistoryRow[]; fixtures: Fixture[] } | null>(null);
+  const [data, setData] = useState<{ running: RunningRow[]; history: HistoryRow[]; priceExperiment: PriceExp } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -106,35 +106,38 @@ export default function Experiments() {
           </section>
         )}
 
-        {/* 가격 실험 픽스처 */}
-        {(data?.fixtures ?? []).map((ex) => {
-          const best = [...ex.variants].sort((a, b) => b.metric - a.metric)[0];
-          const max = Math.max(...ex.variants.map((v) => v.metric));
-          return (
-            <section key={ex.name} className="rounded-2xl border border-line bg-white p-5 opacity-90">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="vs vs-review">fixture</span>
-                <b className="text-[13.5px]">{ex.name}</b>
-                <span className="pill !py-0.5 text-[10.5px]">{ex.kind}</span>
-                <span className="num ml-auto text-[11.5px] text-sub">{ex.metricName}</span>
-              </div>
-              <div className="mt-3 flex flex-col gap-2">
-                {ex.variants.map((v) => (
+        {/* 가격 실험 — 실집계 (BE-4: 배정 × 구매 이벤트) */}
+        {data?.priceExperiment && (
+          <section className="rounded-2xl border border-line bg-white p-5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="vs vs-canary">running</span>
+              <b className="text-[13.5px]">{data.priceExperiment.name}</b>
+              <span className="pill !py-0.5 text-[10.5px]">가격</span>
+              <span className="num ml-auto text-[11.5px] text-sub">{data.priceExperiment.metricName}</span>
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              {data.priceExperiment.variants.map((v) => {
+                const max = Math.max(...data.priceExperiment.variants.map((x) => x.conversion), 1);
+                const best = data.priceExperiment.variants.every((x) => x.conversion <= v.conversion) && v.conversion > 0;
+                return (
                   <div key={v.name} className="flex items-center gap-3 text-[12px]">
-                    <span className="w-[90px] font-bold">{v.name}</span>
-                    <span className="num w-[64px] text-sub">트래픽 {v.traffic}%</span>
+                    <span className="w-[110px] font-bold">{v.name}</span>
                     <div className="h-4 flex-1 overflow-hidden rounded bg-cream">
-                      <i className="block h-full rounded-r" style={{ width: `${(v.metric / max) * 100}%`, background: v.name === best.name ? "var(--color-rose)" : "#d9c9d2" }} />
+                      <i className="block h-full rounded-r" style={{ width: `${(v.conversion / max) * 100}%`, background: best ? "var(--color-rose)" : "#d9c9d2" }} />
                     </div>
-                    <b className="num w-[72px] text-right">{v.metric}%{v.name === best.name && " ★"}</b>
-                    <span className="num w-[88px] text-right text-[11px] text-sub">n={v.samples.toLocaleString()}</span>
+                    <b className="num w-[72px] text-right">{v.conversion}%{best && " ★"}</b>
+                    <span className="num w-[130px] text-right text-[11px] text-sub">
+                      배정 {v.assigned} · 구매 {v.purchases}
+                    </span>
                   </div>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] text-sub">{ex.note}</p>
-            </section>
-          );
-        })}
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-sub">
+              신규 사용자 한정 배정(불변) · 구매 이벤트의 variant 태그로 집계 · 기존 사용자 가격 불변 (DX-03)
+            </p>
+          </section>
+        )}
 
         {/* 승격 이력 (감사로그 파생) */}
         {data && data.history.length > 0 && (

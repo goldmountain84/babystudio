@@ -18,11 +18,12 @@ export async function POST(req: Request) {
       user_id?: string;
       credits?: number;
       amount?: number;
+      meta?: Record<string, unknown>;
     };
     if (!body.order_id || !body.user_id || !body.credits || !body.amount) {
       return err(400, "BAD_REQUEST", "order_id·user_id·credits·amount 필요");
     }
-    const r = settleOrder(getDb(), body.order_id, body.user_id, body.credits, body.amount);
+    const r = settleOrder(getDb(), body.order_id, body.user_id, body.credits, body.amount, body.meta);
     return ok({ ...r, note: r.granted ? "지급 완료" : "중복 웹훅 — 멱등 무시" });
   } catch (e) {
     return handleError(e);

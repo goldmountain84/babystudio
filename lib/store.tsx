@@ -110,6 +110,16 @@ interface StoreState {
   unlockHiRes: (itemId: string, cut: number) => Promise<boolean>;
   addCredits: (credits: number, amountKrw: number) => Promise<boolean>;
   spendCredits: (amount: number, reason: string) => Promise<{ ok: boolean; error?: string }>;
+  member: boolean;
+  membership: Me["membership"];
+  packagePrice: number;
+  packageCredits: number;
+  notifications: Notification[];
+  unreadCount: number;
+  markNotificationRead: (id?: number) => Promise<void>;
+  subscribeMembership: () => Promise<{ ok: boolean; error?: string }>;
+  cancelMembership: () => Promise<{ ok: boolean; error?: string }>;
+  buyPackage: () => Promise<boolean>;
   setBestCut: (itemId: string, cut: number) => void;
   createClip: (
     params: ClipRequest
@@ -142,6 +152,18 @@ interface Me {
   userId: string;
   credits: number;
   babies: { id: string; name: string; birthday: string; trained: number }[];
+  membership: { status: "active" | "cancelled"; renewsAt: number; member: boolean } | null;
+  pricing: { experiment: string; variant: string; price: number; credits: number };
+}
+
+export interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: number;
+  created_at: number;
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -195,12 +217,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (r.ok) setClips((r.body as { clips: Record<string, unknown>[] }).clips.map(mapClip));
   }, [api]);
 
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
   const refresh = useCallback(async () => {
     if (!localRef.current.token) return;
-    const [meRes, albumRes, clipRes] = await Promise.all([
+    const [meRes, albumRes, clipRes, notiRes] = await Promise.all([
       api("/me"),
       api("/albums"),
       api("/clips"),
+      api("/notifications"),
     ]);
     if (meRes.status === 401) {
       // 세션 만료 → 로그아웃 상태로
@@ -208,11 +233,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setMe(null);
       setAlbumRaw([]);
       setClips([]);
+      setNotifications([]);
       return;
     }
     if (meRes.ok) setMe(meRes.body as Me);
     if (albumRes.ok) setAlbumRaw((albumRes.body as { items: typeof albumRaw }).items);
     if (clipRes.ok) setClips((clipRes.body as { clips: Record<string, unknown>[] }).clips.map(mapClip));
+    if (notiRes.ok) setNotifications((notiRes.body as { notifications: Notification[] }).notifications);
   }, [api]);
 
   useEffect(() => {
@@ -391,6 +418,43 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setClips([]);
   }, []);
 
+  // ── BE-4: 멤버십·알림·패키지 ─────────────────────────
+  const markNotificationRead = useCallback(
+    async (id?: number) => {
+      await api("/notifications/read", { method: "POST", body: JSON.stringify({ id }) });
+      setNotifications((n) =>
+        n.map((x) => (id == null || x.id === id ? { ...x, read: 1 } : x))
+      );
+    },
+    [api]
+  );
+
+  const subscribeMembership = useCallback(async () => {
+    const r = await api("/subscriptions", { method: "POST" });
+    if (r.ok) await refresh();
+    return r.ok
+      ? { ok: true }
+      : { ok: false, error: (r.body as { message?: string }).message ?? "구독 실패" };
+  }, [api, refresh]);
+
+  const cancelMembership = useCallback(async () => {
+    const r = await api("/subscriptions/cancel", { method: "POST" });
+    if (r.ok) await refresh();
+    return r.ok
+      ? { ok: true }
+      : { ok: false, error: (r.body as { message?: string }).message ?? "해지 실패" };
+  }, [api, refresh]);
+
+  // 패키지 구매 — 가격·크레딧은 서버 실험 배정이 확정
+  const buyPackage = useCallback(async () => {
+    const r = await api("/orders", {
+      method: "POST",
+      body: JSON.stringify({ context: "package" }),
+    });
+    if (r.ok) await refresh();
+    return r.ok;
+  }, [api, refresh]);
+
   // BE-2 (TR-01): 서버 파기 파이프라인 + 해시 영수증 → 로컬 아이덴티티 폐기
   const purge = useCallback(async (): Promise<PurgeReceipt | null> => {
     const r = await api("/me/purge", { method: "POST" });
@@ -447,6 +511,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         jobs: local.activeJobs,
         album,
         clips,
+        member: me?.membership?.member ?? false,
+        membership: me?.membership ?? null,
+        packagePrice: me?.pricing?.price ?? 19900,
+        packageCredits: me?.pricing?.credits ?? 30,
+        notifications,
+        unreadCount: notifications.filter((n) => !n.read).length,
+        markNotificationRead,
+        subscribeMembership,
+        cancelMembership,
+        buyPackage,
         login,
         logout,
         registerBaby,

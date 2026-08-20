@@ -17,7 +17,7 @@ export default function AppSheet({
   const { id } = use(params);
   const router = useRouter();
   const app = getApp(id);
-  const { hydrated, loggedIn, baby, credits, freeCutsLeft, startJob } =
+  const { hydrated, loggedIn, baby, credits, freeCutsLeft, member, startJob } =
     useStore();
 
   const [outfit, setOutfit] = useState<string | undefined>(undefined);
@@ -46,7 +46,7 @@ export default function AppSheet({
   const run = async () => {
     if (!loggedIn) return router.push("/login");
     if (!baby?.trained) return router.push("/onboarding");
-    if (app.memberOnly) return router.push("/pricing");
+    if (app.memberOnly && !member) return router.push("/pricing"); // 서버도 재검증 (BE-4)
     if (!isFree && credits < totalCredits) {
       setNotEnough(true);
       return;

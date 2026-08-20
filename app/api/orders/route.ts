@@ -6,19 +6,36 @@ import { NextResponse } from "next/server";
 import { requireUser, ok, err } from "@/server/http";
 import { signWebhook } from "@/server/auth";
 import { newId } from "@/server/db";
+import { assignPackageVariant } from "@/server/priceExperiment";
 
 export async function POST(req: Request) {
   const auth = requireUser(req);
   if (auth instanceof NextResponse) return auth;
-  const body = (await req.json().catch(() => ({}))) as { credits?: number; amount?: number };
-  if (!body.credits || !body.amount) return err(400, "BAD_REQUEST", "credits·amount 필요");
+  const body = (await req.json().catch(() => ({}))) as {
+    credits?: number;
+    amount?: number;
+    context?: string; // 'package'면 실험 배정가 서버 확정 + variant 태깅
+  };
+
+  let credits = body.credits;
+  let amount = body.amount;
+  let meta: Record<string, unknown> = {};
+  if (body.context === "package") {
+    // BE-4: 패키지 가격은 실험 배정에서 서버가 확정 — 클라이언트 금액 불신
+    const p = assignPackageVariant(auth.db, auth.userId);
+    credits = p.credits;
+    amount = p.price;
+    meta = { experiment: p.experiment, variant: p.variant, context: "package" };
+  }
+  if (!credits || !amount) return err(400, "BAD_REQUEST", "credits·amount 필요");
 
   const orderId = newId("ord");
   const payload = JSON.stringify({
     order_id: orderId,
     user_id: auth.userId,
-    credits: body.credits,
-    amount: body.amount,
+    credits,
+    amount,
+    meta,
   });
   const origin = new URL(req.url).origin;
   const res = await fetch(`${origin}/api/webhooks/payment`, {

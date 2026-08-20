@@ -7,8 +7,13 @@ import { CREDIT_PACKS } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export default function Pricing() {
-  const { hydrated, credits, addCredits, loggedIn } = useStore();
+  const {
+    hydrated, credits, addCredits, loggedIn,
+    member, membership, packagePrice, packageCredits,
+    subscribeMembership, cancelMembership, buyPackage,
+  } = useStore();
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const flash = (msg: string) => {
     setToast(msg);
@@ -62,10 +67,11 @@ export default function Pricing() {
           </span>
           <b className="text-[15px]">스튜디오 패키지</b>
           <p className="serif my-2.5 text-[28px]">
-            ₩19,900 <span className="text-xs text-[#9a8e96]">/ 1회</span>
+            ₩{(hydrated && loggedIn ? packagePrice : 19900).toLocaleString()}{" "}
+            <span className="text-xs text-[#9a8e96]">/ 1회</span>
           </p>
           <p className="text-[12.5px] leading-8 text-sub">
-            테마 앱 1종 화보 30컷
+            테마 앱 1종 화보 {packageCredits}컷
             <br />
             베스트컷 무빙 영상 1개
             <br />
@@ -75,7 +81,12 @@ export default function Pricing() {
           </p>
           <button
             className="cta big mt-4 w-full"
-            onClick={() => buyPack(30, 19900)}
+            onClick={async () => {
+              if (!loggedIn) return flash("로그인 후 구매할 수 있어요");
+              // 가격은 서버 실험 배정이 확정 (BE-4)
+              const ok = await buyPackage();
+              flash(ok ? `📦 패키지 구매 완료 — ${packageCredits}C 지급 (웹훅 경유)` : "구매 처리에 실패했어요");
+            }}
           >
             백일·돌 준비하기
           </button>
@@ -96,12 +107,49 @@ export default function Pricing() {
             <br />
             시즌 앱 얼리액세스
           </p>
-          <button
-            className="cta dark mt-4 w-full"
-            onClick={() => buyPack(200, 9900)}
-          >
-            구독하기
-          </button>
+          {hydrated && member ? (
+            <>
+              <p className="mt-4 rounded-xl bg-[#e2f4ea] px-3 py-2 text-[12px] font-bold text-[#2b8a5e]">
+                💎 구독 중
+                {membership?.status === "cancelled"
+                  ? ` · ${new Date(membership.renewsAt).toLocaleDateString("ko-KR")} 종료 예정`
+                  : membership
+                    ? ` · 다음 갱신 ${new Date(membership.renewsAt).toLocaleDateString("ko-KR")}`
+                    : ""}
+              </p>
+              {membership?.status === "active" &&
+                (!confirmCancel ? (
+                  <button
+                    className="mt-2 w-full cursor-pointer text-[11.5px] text-sub hover:text-rose"
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    해지하기
+                  </button>
+                ) : (
+                  <button
+                    className="cta ghost mt-2 w-full !py-2 !text-[12px]"
+                    onClick={async () => {
+                      setConfirmCancel(false);
+                      const r = await cancelMembership();
+                      flash(r.ok ? "해지 완료 — 혜택은 기간 만료까지, 잔여 크레딧은 그대로예요" : `🚫 ${r.error}`);
+                    }}
+                  >
+                    정말 해지할까요? (혜택은 기간 만료까지 유지)
+                  </button>
+                ))}
+            </>
+          ) : (
+            <button
+              className="cta dark mt-4 w-full"
+              onClick={async () => {
+                if (!loggedIn) return flash("로그인 후 구독할 수 있어요");
+                const r = await subscribeMembership();
+                flash(r.ok ? "💎 멤버십 시작! 월 200C 지급 + 전용 테마 해금" : `🚫 ${r.error}`);
+              }}
+            >
+              구독하기
+            </button>
+          )}
         </div>
       </div>
 
