@@ -100,7 +100,11 @@ interface StoreState {
   clips: Clip[];
   login: () => Promise<boolean>;
   logout: () => void;
-  registerBaby: (name: string, birthday: string) => Promise<boolean>;
+  registerBaby: (
+    name: string,
+    birthday: string,
+    photos: File[]
+  ) => Promise<{ ok: boolean; error?: string; uploaded?: number }>;
   refresh: () => Promise<void>;
   startJob: (
     appId: string,
@@ -290,18 +294,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setClips([]);
   }, []);
 
+  // 실제 사진 업로드 포함: 프로필 생성 → multipart 업로드 → 학습(참조 3장 게이트 서버 강제)
   const registerBaby = useCallback(
-    async (name: string, birthday: string): Promise<boolean> => {
+    async (
+      name: string,
+      birthday: string,
+      photos: File[]
+    ): Promise<{ ok: boolean; error?: string; uploaded?: number }> => {
       const created = await api("/babies", {
         method: "POST",
         body: JSON.stringify({ name, birthday }),
       });
-      if (!created.ok) return false;
+      if (!created.ok)
+        return { ok: false, error: (created.body as { message?: string }).message ?? "프로필 생성 실패" };
       const babyId = (created.body as { babyId: string }).babyId;
+
+      const form = new FormData();
+      for (const f of photos) form.append("photos", f);
+      const upRes = await fetch(`${API}/babies/${babyId}/photos`, {
+        method: "POST",
+        headers: localRef.current.token
+          ? { Authorization: `Bearer ${localRef.current.token}` }
+          : {},
+        body: form, // Content-Type은 브라우저가 boundary와 함께 설정
+      });
+      const upBody = (await upRes.json().catch(() => ({}))) as {
+        accepted?: number;
+        message?: string;
+      };
+      if (!upRes.ok) return { ok: false, error: upBody.message ?? "사진 업로드 실패" };
+
       const trained = await api(`/babies/${babyId}/train`, { method: "POST" });
-      if (!trained.ok) return false;
+      if (!trained.ok)
+        return { ok: false, error: (trained.body as { message?: string }).message ?? "학습 시작 실패" };
       await refresh();
-      return true;
+      return { ok: true, uploaded: upBody.accepted };
     },
     [api, refresh]
   );

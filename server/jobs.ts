@@ -19,6 +19,7 @@ import {
   startRealGeneration,
 } from "./vendor";
 import { existsSync } from "node:fs";
+import { listPhotos } from "./uploads";
 import { getApp } from "@/lib/data";
 
 // 시뮬레이션 타이밍 (실서비스: 워커 이벤트)
@@ -145,13 +146,16 @@ export function createImageJob(
   // 실사 벤더: 접수 직후 백그라운드 생성 킥오프 (실서비스: 워커 큐)
   if (vendor === "gpt-image") {
     const p = result.asm.params as { resolution?: string };
+    // 얼굴 유지: 업로드된 참조 사진이 있으면 images/edits 경로 (프리셋의 "얼굴 유지" 규칙이 실작동)
+    const refs = listPhotos(params.babyId);
     startRealGeneration(
       db,
       jobId,
       // 이미지 API는 네거티브 파라미터가 없어 회피 지시를 본문에 병합
       `${result.asm.positive}\n\n반드시 피할 것: ${result.asm.negative}`,
       p.resolution ?? "1024x1536",
-      cuts
+      cuts,
+      refs
     );
   }
   return { jobId: result.jobId, reused: false };

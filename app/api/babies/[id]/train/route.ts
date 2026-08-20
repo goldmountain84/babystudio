@@ -13,8 +13,12 @@ export async function POST(
   try {
     const { id } = await ctx.params;
     trainBaby(auth.db, auth.userId, id);
-    return ok({ trained: true, note: "실서비스: LoRA 학습 큐 + 완료 시 원본 즉시 삭제" });
+    return ok({ trained: true, note: "참조 사진은 얼굴 유지 생성(images/edits)에 사용됩니다" });
   } catch (e) {
+    // 학습 게이트(사진 부족·프로필 없음)는 도메인 에러 — 400으로 표면화
+    if (e instanceof Error && /부족|프로필/.test(e.message)) {
+      return NextResponse.json({ code: "TRAIN_GATE", message: e.message }, { status: 400 });
+    }
     return handleError(e);
   }
 }

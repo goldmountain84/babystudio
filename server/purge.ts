@@ -4,7 +4,10 @@
 // 실서비스: purge 전용 큐 최우선 처리 + KMS 키 폐기(crypto-shredding) + 이메일 발송.
 
 import { createHash } from "node:crypto";
+import { rmSync } from "node:fs";
 import { type DB, withTx, audit } from "./db";
+import { removePhotos } from "./uploads";
+import { jobImageDir } from "./vendor";
 
 export interface PurgeReceipt {
   rootHash: string;
@@ -35,6 +38,11 @@ export function purgeUser(db: DB, userId: string): PurgeReceipt {
       .update([...babyIds, ...jobIds, ...assetIds].sort().join("|"))
       .digest("hex");
 
+    // 파일 파기: 얼굴 참조 사진 + 실사 생성물 (실서비스: S3 + crypto-shredding)
+    let photoFiles = 0;
+    for (const b of babyIds) photoFiles += removePhotos(b);
+    for (const j of jobIds) rmSync(jobImageDir(j), { recursive: true, force: true });
+
     if (jobIds.length) {
       db.prepare(`DELETE FROM assets WHERE job_id IN (${jobIds.map(() => "?").join(",")})`).run(...jobIds);
       db.prepare(`DELETE FROM jobs WHERE user_id = ?`).run(userId);
@@ -51,6 +59,7 @@ export function purgeUser(db: DB, userId: string): PurgeReceipt {
       rootHash: `sha256:${rootHash}`,
       purgedAt: new Date().toISOString(),
       items: [
+        { label: "얼굴 참조 사진 (원본)", count: photoFiles },
         { label: "AI 학습 모델·아기 프로필", count: babyIds.length },
         { label: "생성 잡", count: jobIds.length },
         { label: "생성물 컷 (백업 포함)", count: assetIds.length },

@@ -12,6 +12,7 @@ import {
   seedModeration,
 } from "./moderation";
 import { socialLogin, createBaby, trainBaby } from "./auth";
+import { isolateFileRoots, seedPhotos } from "./testUtils";
 import { createImageJob } from "./jobs";
 import { balance, ledgerOf } from "./ledger";
 import { THEME_APPS } from "@/lib/data";
@@ -19,6 +20,7 @@ import { THEME_APPS } from "@/lib/data";
 let db: DB;
 
 beforeEach(() => {
+  isolateFileRoots();
   db = createDb(":memory:");
 });
 
@@ -48,6 +50,7 @@ describe("파기 파이프라인 (TR-01)", () => {
   it("데이터 삭제 + 원장 보존 + 영수증 발급", () => {
     const { userId } = socialLogin(db, "kakao", "파기테스트");
     const babyId = createBaby(db, userId, "서연이", "2026-05-24");
+    seedPhotos(babyId);
     trainBaby(db, userId, babyId);
     const { jobId } = createImageJob(db, { userId, babyId, themeId: "dol-hanbok", options: {} });
     expect(jobId).toBeTruthy();

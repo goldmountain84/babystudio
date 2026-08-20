@@ -1,13 +1,14 @@
 "use client";
 
-// S03 온보딩 — 아기 정보 → 사진 업로드 → AI 학습 (데모: 학습 시뮬레이션)
+// S03 온보딩 — 실제 사진 업로드 (multipart) → 서버 학습 게이트(참조 3장 필수)
+// 실서비스: 업로드 즉시 얼굴 검출·블러·동일인 자동 검사 (O-01)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 
-const SLOT_GUIDE = ["정면 😊", "측면", "웃는 얼굴", "앉은 모습", "누운 모습"];
 const TRAIN_MS = 8000;
+const MAX_FILES = 10;
 
 export default function Onboarding() {
   const router = useRouter();
@@ -15,28 +16,37 @@ export default function Onboarding() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [uploaded, setUploaded] = useState<boolean[]>(
-    Array(SLOT_GUIDE.length).fill(false)
-  );
+  const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
-  const [apiError, setApiError] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const registered = useRef(false);
+  const picker = useRef<HTMLInputElement | null>(null);
 
-  const uploadedCount = uploaded.filter(Boolean).length;
+  // 미리보기 URL — 파일 변경 시 재생성, 언마운트 시 해제
+  const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
-  // 이미 학습된 프로필이 있으면 스튜디오로
   useEffect(() => {
     if (hydrated && baby?.trained && step === 1) router.replace("/studio");
   }, [hydrated, baby, step, router]);
 
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    setFiles((prev) =>
+      [...prev, ...Array.from(list).filter((f) => f.type.startsWith("image/"))].slice(0, MAX_FILES)
+    );
+  };
+
   useEffect(() => {
     if (step !== 3) return;
-    // 실제 API: 프로필 생성 + 학습 잡 — 애니메이션과 병행 (§12 매핑)
+    // 실제 API: 프로필 생성 → 사진 업로드 → 학습 — 애니메이션과 병행
     if (!registered.current) {
       registered.current = true;
-      void registerBaby(name, birthday).then((ok) => {
-        if (!ok) setApiError(true);
+      void registerBaby(name, birthday, files).then((r) => {
+        if (!r.ok) setApiError(r.error ?? "등록 실패");
+        else setUploaded(r.uploaded ?? files.length);
       });
     }
     const started = Date.now();
@@ -56,7 +66,6 @@ export default function Onboarding() {
 
   return (
     <main className="mx-auto max-w-[560px] px-6 py-10">
-      {/* step indicator */}
       <div className="mb-7 flex items-center gap-2 text-[11px] font-bold text-sub">
         <span className="text-rose">STEP {step}/3</span>
         <span>·</span>
@@ -107,31 +116,45 @@ export default function Onboarding() {
       {step === 2 && (
         <div className="card fadeup px-7 py-8">
           <p className="serif text-[20px] font-bold">
-            {name}의 사진 5~10장을 올려주세요
+            {name}의 사진 3~{MAX_FILES}장을 올려주세요
           </p>
           <p className="mt-1 text-xs text-sub">
-            데모 빌드 — 슬롯을 탭하면 업로드된 것으로 처리돼요
+            정면·측면·웃는 얼굴 등 다양한 각도일수록 얼굴이 더 닮게 나와요
           </p>
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/heic"
+            className="hidden"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
           <div className="mt-5 grid grid-cols-3 gap-2.5">
-            {SLOT_GUIDE.map((g, i) => (
-              <button
-                key={g}
-                onClick={() =>
-                  setUploaded((u) => u.map((v, j) => (j === i ? !v : v)))
-                }
-                className={`flex h-[84px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold transition-all ${
-                  uploaded[i]
-                    ? "border-rose bg-blush text-rose-d"
-                    : "border-line bg-cream text-sub hover:border-rose"
-                }`}
-              >
-                <span className="text-xl">{uploaded[i] ? "✅" : "📷"}</span>
-                {g}
-              </button>
+            {previews.map((src, i) => (
+              <div key={i} className="relative h-[84px] overflow-hidden rounded-xl border border-line">
+                {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기 objectURL */}
+                <img src={src} alt={`업로드 ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  onClick={() => setFiles((f) => f.filter((_, j) => j !== i))}
+                  className="absolute right-1 top-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-black/50 text-[10px] text-white"
+                  aria-label="사진 제거"
+                >
+                  ✕
+                </button>
+              </div>
             ))}
-            <div className="flex h-[84px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-line text-[11px] font-bold text-[#c5bac2]">
-              + 추가
-            </div>
+            {files.length < MAX_FILES && (
+              <button
+                onClick={() => picker.current?.click()}
+                className="flex h-[84px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-cream text-[11px] font-bold text-sub transition-all hover:border-rose"
+              >
+                <span className="text-xl">📷</span>
+                사진 선택
+              </button>
+            )}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] leading-relaxed">
             <div className="rounded-lg border border-[#7fbf7f] bg-[#f2faf2] px-3 py-2">
@@ -142,18 +165,18 @@ export default function Onboarding() {
             </div>
           </div>
           <p className="mt-3 text-[11px] text-[#a99ba5]">
-            ⚠ 업로드 즉시 자동 검사: 얼굴 검출 실패·저화질 컷은 교체를 요청드려요
+            JPG·PNG·WebP·HEIC · 장당 20MB 이하 — 서버가 자동 검증해요
           </p>
           <div className="mt-5 rounded-xl bg-cream px-4 py-3 text-center text-[11.5px] leading-relaxed">
-            🔒 원본 사진은 AI 학습 완료 후 <b>즉시 삭제</b>되며, 외부 모델
-            학습에 사용되지 않습니다
+            🔒 사진은 얼굴 참조로만 사용되고 외부 모델 학습에 쓰이지 않으며,
+            데이터 파기 시 <b>즉시 삭제</b>됩니다
           </div>
           <button
             onClick={() => setStep(3)}
-            disabled={uploadedCount < 3}
+            disabled={files.length < 3}
             className="cta big mt-5 w-full"
           >
-            AI 학습 시작하기 ({uploadedCount}/5장 · 약 5분)
+            AI 학습 시작하기 ({files.length}/3장 이상)
           </button>
         </div>
       )}
@@ -162,40 +185,56 @@ export default function Onboarding() {
         <div className="card fadeup px-7 py-10 text-center">
           <span className="pulse-soft text-5xl">👶✨</span>
           <p className="serif mt-4 text-[20px] font-bold">
-            {progress >= 100
-              ? `${name}의 AI 프로필이 완성됐어요!`
-              : `${name}의 얼굴을 배우는 중이에요`}
-          </p>
-          <div className="mx-auto mt-5 h-2 w-full max-w-[320px] overflow-hidden rounded bg-[#f0e4e0]">
-            <i
-              className="block h-full bg-gradient-to-r from-rose to-[#f0a1bc] transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-sub">
             {apiError
-              ? "프로필 등록에 실패했어요 — 새로고침 후 다시 시도해 주세요"
+              ? "등록에 실패했어요"
               : progress >= 100
-                ? "스튜디오로 이동할게요 🎉"
-                : `${Math.round(progress)}% · 완료되면 알림을 보내드려요`}
+                ? `${name}의 AI 프로필이 완성됐어요!`
+                : `${name}의 얼굴을 배우는 중이에요`}
           </p>
-          {/* 웰컴 매직 컷 (§3.1) — 학습을 기다리기 전에 zero-shot으로 "된다"는 확신을 먼저 */}
-          {progress > 30 && (
-            <div className="fadeup mx-auto mt-6 max-w-[260px] rounded-2xl border border-line bg-cream p-3.5">
-              <div className="ph g-angel h-[120px]">
-                <span className="emo" style={{ fontSize: 34 }}>👼✨</span>
-                <span className="cap">웰컴 매직 컷</span>
-                <span className="wm-tag">PREVIEW</span>
+          {apiError ? (
+            <>
+              <p className="mt-3 text-[12.5px] font-bold text-rose-d">{apiError}</p>
+              <button
+                className="cta ghost mt-5"
+                onClick={() => {
+                  registered.current = false;
+                  setApiError(null);
+                  setStep(2);
+                }}
+              >
+                사진 다시 올리기
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="mx-auto mt-5 h-2 w-full max-w-[320px] overflow-hidden rounded bg-[#f0e4e0]">
+                <i
+                  className="block h-full bg-gradient-to-r from-rose to-[#f0a1bc] transition-all"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-sub">
-                기다리는 동안 zero-shot 엔진으로 먼저 만들어 본 미리보기예요.
-                학습이 끝나면 훨씬 더 닮은 컷이 나와요!
+              <p className="mt-2 text-xs text-sub">
+                {progress >= 100
+                  ? "스튜디오로 이동할게요 🎉"
+                  : `${Math.round(progress)}%${uploaded != null ? ` · 참조 사진 ${uploaded}장 업로드됨` : ""} · 완료되면 알림을 보내드려요`}
               </p>
-            </div>
+              {progress > 30 && (
+                <div className="fadeup mx-auto mt-6 max-w-[260px] rounded-2xl border border-line bg-cream p-3.5">
+                  <div className="ph g-angel h-[120px]">
+                    <span className="emo" style={{ fontSize: 34 }}>👼✨</span>
+                    <span className="cap">웰컴 매직 컷</span>
+                    <span className="wm-tag">PREVIEW</span>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-sub">
+                    기다리는 동안 zero-shot 엔진으로 먼저 만들어 본 미리보기예요.
+                    학습이 끝나면 훨씬 더 닮은 컷이 나와요!
+                  </p>
+                </div>
+              )}
+            </>
           )}
-
           <p className="mt-5 text-[11px] text-[#a99ba5]">
-            원본 사진은 학습 완료 즉시 삭제됩니다 🔒
+            참조 사진은 얼굴 유지 생성에만 사용됩니다 🔒
           </p>
         </div>
       )}

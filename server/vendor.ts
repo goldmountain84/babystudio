@@ -4,7 +4,7 @@
 // 실서비스 참고: 얼굴 유지는 업로드 원본과 함께 images/edits 엔드포인트 사용 —
 // 데모는 업로드가 목이므로 프리셋 프롬프트 단독 text-to-image로 연동한다.
 
-import { mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { type DB, audit } from "./db";
 
@@ -65,6 +65,40 @@ export function buildImageRequest(
   return { model: "gpt-image-1", prompt, n, size, quality: "medium" };
 }
 
+/** 얼굴 유지 경로 결정: 참조 사진이 있으면 images/edits (참조 동봉), 없으면 text-to-image */
+export function pickEndpoint(refCount: number): "edits" | "generations" {
+  return refCount > 0 ? "edits" : "generations";
+}
+
+const REF_MIME: Record<string, string> = {
+  ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic",
+};
+
+/** edits용 multipart 폼 — 참조 사진 최대 4장 동봉 (gpt-image-1 다중 입력) */
+export function buildEditsForm(
+  prompt: string,
+  resolution: string,
+  n: number,
+  refPaths: string[]
+): FormData {
+  const p = buildImageRequest(prompt, resolution, n);
+  const form = new FormData();
+  form.append("model", p.model);
+  form.append("prompt", p.prompt);
+  form.append("n", String(p.n));
+  form.append("size", p.size);
+  form.append("quality", p.quality);
+  for (const ref of refPaths.slice(0, 4)) {
+    const ext = path.extname(ref).toLowerCase();
+    form.append(
+      "image[]",
+      new Blob([new Uint8Array(readFileSync(ref))], { type: REF_MIME[ext] ?? "image/png" }),
+      path.basename(ref)
+    );
+  }
+  return form;
+}
+
 /** 백그라운드 실사 생성 — 잡 접수 직후 킥오프 (실서비스: 워커 큐)
  *  결과는 파일로 적재, 완료 판정은 jobs.tick이 realImagesReady로 수행. */
 export function startRealGeneration(
@@ -72,7 +106,8 @@ export function startRealGeneration(
   jobId: string,
   prompt: string,
   resolution: string,
-  count: number
+  count: number,
+  refPaths: string[] = [] // 얼굴 참조 사진 — 있으면 images/edits로 얼굴 유지 생성
 ): void {
   const dir = jobImageDir(jobId);
   mkdirSync(dir, { recursive: true });
@@ -83,18 +118,26 @@ export function startRealGeneration(
     return;
   }
   const started = Date.now();
+  const endpoint = pickEndpoint(refPaths.length);
   void (async () => {
     try {
-      const body = buildImageRequest(prompt, resolution, count);
-      const res = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120_000),
-      });
+      const res =
+        endpoint === "edits"
+          ? await fetch("https://api.openai.com/v1/images/edits", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiKey}` }, // Content-Type은 FormData가 설정
+              body: buildEditsForm(prompt, resolution, count, refPaths),
+              signal: AbortSignal.timeout(120_000),
+            })
+          : await fetch("https://api.openai.com/v1/images/generations", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify(buildImageRequest(prompt, resolution, count)),
+              signal: AbortSignal.timeout(120_000),
+            });
       if (!res.ok) {
         const errText = (await res.text()).slice(0, 300);
         throw new Error(`OpenAI ${res.status}: ${errText}`);
@@ -108,12 +151,19 @@ export function startRealGeneration(
       audit(
         db,
         "시스템",
-        `실사 생성 완료 — gpt-image ${data.data.length}컷, ${Math.round((Date.now() - started) / 1000)}s`,
+        `실사 생성 완료 — gpt-image/${endpoint} ${data.data.length}컷` +
+          (endpoint === "edits" ? ` (얼굴 참조 ${Math.min(refPaths.length, 4)}장)` : "") +
+          `, ${Math.round((Date.now() - started) / 1000)}s`,
         jobId
       );
     } catch (e) {
       writeFileSync(path.join(dir, ".error"), String(e).slice(0, 500));
-      audit(db, "시스템", `실사 생성 실패 → 시뮬레이터 폴백 (${String(e).slice(0, 80)})`, jobId);
+      audit(
+        db,
+        "시스템",
+        `실사 생성 실패(${endpoint}) → 시뮬레이터 폴백 (${String(e).slice(0, 80)})`,
+        jobId
+      );
     }
   })();
 }

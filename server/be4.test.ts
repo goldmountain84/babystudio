@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDb, type DB } from "./db";
 import { socialLogin, createBaby, trainBaby } from "./auth";
+import { isolateFileRoots, seedPhotos } from "./testUtils";
 import {
   cancelSubscription, ensureRenewal, isMember, MONTHLY_GRANT, PERIOD_MS, subscribe, SubError,
 } from "./subscriptions";
@@ -16,10 +17,12 @@ let userId: string;
 let babyId: string;
 
 beforeEach(() => {
+  isolateFileRoots();
   db = createDb(":memory:");
   const login = socialLogin(db, "kakao", "be4유저"); // +12C
   userId = login.userId;
   babyId = createBaby(db, userId, "서연이", "2026-05-24"); // 백일 D-11
+  seedPhotos(babyId);
   trainBaby(db, userId, babyId);
 });
 

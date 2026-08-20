@@ -4,6 +4,7 @@
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { type DB, withTx, newId, trackEvent } from "./db";
 import { grant } from "./ledger";
+import { photoCount, MIN_PHOTOS } from "./uploads";
 
 const SIGNUP_GRANT = 12;
 
@@ -64,13 +65,19 @@ export function createBaby(
   return id;
 }
 
-/** 학습 잡 (BE-1: 즉시 완료 시뮬레이션 — 실서비스: LoRA 워커 + 원본 삭제) */
+/** 학습 — 참조 사진 3장 이상 필수 (실제 게이트, O-02)
+ *  데모: 참조 사진 = 얼굴 아티팩트 (gpt-image edits 입력). 실서비스: LoRA 학습 후 원본 삭제 */
 export function trainBaby(db: DB, userId: string, babyId: string): void {
-  const r = db
-    .prepare("UPDATE baby_profiles SET trained = 1 WHERE id = ? AND user_id = ?")
-    .run(babyId, userId);
-  if (Number(r.changes) === 0) throw new Error("아기 프로필 없음");
-  trackEvent(db, "train_done", userId, { baby: babyId });
+  const owner = db
+    .prepare("SELECT user_id FROM baby_profiles WHERE id = ?")
+    .get(babyId) as { user_id: string } | undefined;
+  if (!owner || owner.user_id !== userId) throw new Error("아기 프로필 없음");
+  const n = photoCount(babyId);
+  if (n < MIN_PHOTOS) {
+    throw new Error(`참조 사진이 부족해요 (${n}/${MIN_PHOTOS}장) — 사진을 먼저 업로드해 주세요`);
+  }
+  db.prepare("UPDATE baby_profiles SET trained = 1 WHERE id = ?").run(babyId);
+  trackEvent(db, "train_done", userId, { baby: babyId, photos: n });
 }
 
 // ── 결제 웹훅 서명 (설계서 §4.1: 웹훅이 유일한 지급 트리거) ──

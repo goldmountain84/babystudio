@@ -113,7 +113,7 @@ npm run dev   # http://localhost:3000
 - 실비 보호: 잡당 컷 수 상한 `BABYSTUDIO_REAL_CUTS`(기본 4), 원가 $0.063/컷 실기록
 - API 실패·타임아웃(150s) 시 시뮬레이터 폴백 + 감사로그 — 사용자 플로우는 끊기지 않음
 - 서빙: `GET /api/assets/:id/image?token=` (소유권 검증, 실서비스: S3 서명 URL) → `PhotoArt`가 그라디언트 대신 실이미지 렌더
-- 주의: 데모는 업로드가 목이라 text-to-image — 실서비스 얼굴 유지는 업로드 원본과 `images/edits` 사용
+- **얼굴 유지 생성**: 온보딩이 실제 사진을 업로드(`POST /api/babies/:id/photos`, multipart, 형식·20MB 검증)하고 `data/uploads/<babyId>/`에 얼굴 참조로 보관. 학습은 **참조 3장 이상일 때만** 통과(서버 게이트, 400 TRAIN_GATE). 실사 생성 시 참조가 있으면 `images/generations` 대신 **`images/edits`**(참조 최대 4장 동봉)로 호출 — 프리셋의 "얼굴 유지" 규칙이 실작동. 파기 시 참조 사진 파일까지 삭제(영수증에 장수 기록)
 
 ## 실서비스 전환 시 교체 지점
 

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 import { createDb, type DB } from "./db";
 import { grant, balance } from "./ledger";
 import { createBaby, socialLogin, trainBaby, signWebhook, verifyWebhook } from "./auth";
+import { isolateFileRoots, seedPhotos } from "./testUtils";
 import { createImageJob, JobError, jobView, tick, unlockHiRes } from "./jobs";
 
 let db: DB;
@@ -11,10 +12,12 @@ let userId: string;
 let babyId: string;
 
 beforeEach(() => {
+  isolateFileRoots();
   db = createDb(":memory:");
   const login = socialLogin(db, "kakao", "테스트유저"); // 가입 보상 +12C
   userId = login.userId;
   babyId = createBaby(db, userId, "서연이", "2026-05-24");
+  seedPhotos(babyId);
   trainBaby(db, userId, babyId);
 });
 
