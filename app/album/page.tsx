@@ -70,6 +70,7 @@ export default function AlbumPage() {
                     gradient={app.gradient}
                     emoji={app.emoji}
                     caption={`${app.name} ${item.cuts}컷${item.videos.length ? ` · ▶ 영상 ${item.videos.length}` : ""}`}
+                    imgSrc={item.imageUrls.find((u) => u) ?? null}
                     className="h-[120px] transition-transform hover:-translate-y-1"
                   />
                 </Link>

@@ -42,6 +42,7 @@ export interface AlbumItem {
   watermarked: boolean;
   assetIds: string[];
   similarities: number[];
+  imageUrls: (string | null)[]; // 실사 생성분만 URL (시뮬레이터 컷은 null → 그라디언트)
 }
 
 // S08 영상 스튜디오 — BE-3부터 서버 워커 (clips 테이블, 가격 서버 계산)
@@ -85,7 +86,7 @@ export interface JobServerView {
   themeId: string | null;
   promptVersionId: string | null;
   error: string | null;
-  assets: { id: string; idx: number; similarity: number; hi_res: number; is_best: number }[];
+  assets: { id: string; idx: number; similarity: number; hi_res: number; is_best: number; has_image?: number }[];
 }
 
 interface StoreState {
@@ -110,6 +111,7 @@ interface StoreState {
   unlockHiRes: (itemId: string, cut: number) => Promise<boolean>;
   addCredits: (credits: number, amountKrw: number) => Promise<boolean>;
   spendCredits: (amount: number, reason: string) => Promise<{ ok: boolean; error?: string }>;
+  vendor: "gpt-image" | "simulator";
   member: boolean;
   membership: Me["membership"];
   packagePrice: number;
@@ -154,6 +156,7 @@ interface Me {
   babies: { id: string; name: string; birthday: string; trained: number }[];
   membership: { status: "active" | "cancelled"; renewsAt: number; member: boolean } | null;
   pricing: { experiment: string; variant: string; price: number; credits: number };
+  vendor: "gpt-image" | "simulator";
 }
 
 export interface Notification {
@@ -497,6 +500,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       watermarked: true,
       assetIds: i.assets.map((a) => a.id),
       similarities: i.assets.map((a) => a.similarity),
+      imageUrls: i.assets.map((a) =>
+        a.has_image && local.token
+          ? `/api/assets/${a.id}/image?token=${local.token}`
+          : null
+      ),
     };
   });
 
@@ -511,6 +519,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         jobs: local.activeJobs,
         album,
         clips,
+        vendor: me?.vendor ?? "simulator",
         member: me?.membership?.member ?? false,
         membership: me?.membership ?? null,
         packagePrice: me?.pricing?.price ?? 19900,

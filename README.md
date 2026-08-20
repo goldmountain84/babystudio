@@ -105,6 +105,16 @@ npm run dev   # http://localhost:3000
 - 신규 테마 11종 추가(꽃 리스·D+100 블록·첫 앉기·밀크바스·성장 비교·베어 니트·ONE 풍선·첫 걸음마·돌잡이·색동 클로즈업·한복 가족) → 카탈로그 33종 전부 생성 가능
 - 안전 레이어·네거티브 체인·품질 게이트는 기존대로 서버 조립이 주입 (프리셋과 공존)
 
+## 실사 이미지 생성 (OpenAI gpt-image-1)
+
+`server/vendor.ts` — 멀티벤더 어댑터(PC-08). **`.env.local`에 `OPENAI_API_KEY`를 넣고 dev 서버를 재시작하면 시뮬레이터에서 실사 생성으로 자동 전환**된다 (`.env.example` 참조).
+
+- 잡 접수 직후 백그라운드로 gpt-image-1 호출(프리셋 프롬프트 + 네거티브 병합, 1K 해상도 매핑) → `data/assets/<jobId>/<idx>.png` 적재 → tick이 도착 확인 후 완료
+- 실비 보호: 잡당 컷 수 상한 `BABYSTUDIO_REAL_CUTS`(기본 4), 원가 $0.063/컷 실기록
+- API 실패·타임아웃(150s) 시 시뮬레이터 폴백 + 감사로그 — 사용자 플로우는 끊기지 않음
+- 서빙: `GET /api/assets/:id/image?token=` (소유권 검증, 실서비스: S3 서명 URL) → `PhotoArt`가 그라디언트 대신 실이미지 렌더
+- 주의: 데모는 업로드가 목이라 text-to-image — 실서비스 얼굴 유지는 업로드 원본과 `images/edits` 사용
+
 ## 실서비스 전환 시 교체 지점
 
 - `lib/store.tsx` → 백엔드 API (인증, 크레딧 원장 hold/confirm/refund, 잡 큐 + SSE)

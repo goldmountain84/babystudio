@@ -5,6 +5,7 @@ import { requireUser, ok } from "@/server/http";
 import { balance, ledgerOf, reconcile } from "@/server/ledger";
 import { ensureRenewal, getSubscription, isMember } from "@/server/subscriptions";
 import { assignPackageVariant } from "@/server/priceExperiment";
+import { activeVendor } from "@/server/vendor";
 
 export async function GET(req: Request) {
   const auth = requireUser(req);
@@ -25,5 +26,6 @@ export async function GET(req: Request) {
       ? { status: sub.status, renewsAt: sub.renews_at, member: isMember(db, userId) }
       : null,
     pricing: assignPackageVariant(db, userId), // BE-4: 가격 실험 배정 (신규 한정·불변)
+    vendor: activeVendor(), // 'gpt-image'(실사) | 'simulator'
   });
 }

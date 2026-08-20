@@ -9,6 +9,7 @@ interface Props {
   watermark?: boolean;
   className?: string;
   emojiSize?: number;
+  imgSrc?: string | null; // 실사 생성 이미지 — 있으면 그라디언트 대신 표시
   children?: React.ReactNode;
 }
 
@@ -20,17 +21,26 @@ export default function PhotoArt({
   watermark,
   className = "",
   emojiSize,
+  imgSrc,
   children,
 }: Props) {
   return (
     <div className={`ph ${gradient} ${className}`}>
+      {imgSrc && (
+        // eslint-disable-next-line @next/next/no-img-element -- 서명 URL 서빙, 최적화 프록시 불필요
+        <img
+          src={imgSrc}
+          alt={caption ?? "생성 컷"}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
       {video && <div className="shine" />}
-      {emoji && (
+      {emoji && !imgSrc && (
         <span className="emo" style={emojiSize ? { fontSize: emojiSize } : undefined}>
           {emoji}
         </span>
       )}
-      {caption && <span className="cap">{caption}</span>}
+      {caption && <span className="cap relative z-[1]">{caption}</span>}
       {video && <span className="play">▶</span>}
       {watermark && <span className="wm-tag">WATERMARK</span>}
       {children}

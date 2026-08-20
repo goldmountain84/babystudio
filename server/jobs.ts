@@ -8,6 +8,17 @@ import { assemble, seedPrompts } from "./prompts";
 import { flagIfGrayZone } from "./moderation";
 import { pushNotification } from "./notifications";
 import { isMember } from "./subscriptions";
+import {
+  activeVendor,
+  isRealJob,
+  jobImagePath,
+  realCutLimit,
+  realImageCount,
+  realImagesReady,
+  REAL_COST_PER_IMAGE_USD,
+  startRealGeneration,
+} from "./vendor";
+import { existsSync } from "node:fs";
 import { getApp } from "@/lib/data";
 
 // 시뮬레이션 타이밍 (실서비스: 워커 이벤트)
@@ -89,10 +100,12 @@ export function createImageJob(
   if (!baby.trained) throw new JobError("BAD_REQUEST", "AI 프로필 학습이 필요합니다");
 
   const credits = app.credits;
-  const cuts = app.cuts;
+  // 실사 벤더 활성 시 컷 수 상한 적용 — 실비 보호 (vendor.ts)
+  const vendor = activeVendor();
+  const cuts = vendor === "gpt-image" ? Math.min(app.cuts, realCutLimit()) : app.cuts;
   const jobId = newId("job");
 
-  return withTx(db, () => {
+  const result = withTx(db, () => {
     // ① 프롬프트 조립 (버전 라우팅 포함) — 실패 시 과금 전에 중단
     const asm = assemble(db, params.themeId, params.userId, baby.name, baby.birthday, params.options);
     // ② 과금 예약
@@ -124,9 +137,24 @@ export function createImageJob(
       theme: params.themeId,
       version: asm.versionId,
       credits,
+      vendor,
     });
-    return { jobId, reused: false };
+    return { jobId, reused: false, asm };
   });
+
+  // 실사 벤더: 접수 직후 백그라운드 생성 킥오프 (실서비스: 워커 큐)
+  if (vendor === "gpt-image") {
+    const p = result.asm.params as { resolution?: string };
+    startRealGeneration(
+      db,
+      jobId,
+      // 이미지 API는 네거티브 파라미터가 없어 회피 지시를 본문에 병합
+      `${result.asm.positive}\n\n반드시 피할 것: ${result.asm.negative}`,
+      p.resolution ?? "1024x1536",
+      cuts
+    );
+  }
+  return { jobId: result.jobId, reused: false };
 }
 
 /** 상태 전이 tick — 멱등. 완료 트랜잭션은 status 가드로 1회만 실행 */
@@ -138,11 +166,19 @@ export function tick(db: DB, jobId: string): JobRow {
   const elapsed = Date.now() - job.created_at;
   const opts = JSON.parse(job.options) as { forceFail?: boolean };
 
+  const REAL_TIMEOUT = 150_000; // 실사 생성 대기 상한 — 초과 시 시뮬레이터 폴백 완료
+
   let next: string = job.status;
   if (elapsed < T_QUEUED) next = "queued";
   else if (elapsed < T_RUNNING) next = "running";
   else if (elapsed < T_POST) next = "postprocess";
-  else next = opts.forceFail ? "failed" : "done";
+  else if (
+    isRealJob(jobId) &&
+    !realImagesReady(jobId, job.requested_cuts) &&
+    elapsed < REAL_TIMEOUT
+  ) {
+    next = "postprocess"; // 실사 이미지 도착까지 후처리 단계 유지
+  } else next = opts.forceFail ? "failed" : "done";
 
   if (next === job.status) return job;
 
@@ -161,13 +197,16 @@ export function tick(db: DB, jobId: string): JobRow {
     withTx(db, () => {
       const cur = db.prepare("SELECT status FROM jobs WHERE id = ?").get(jobId) as { status: string };
       if (cur.status === "done" || cur.status === "failed") return; // 멱등 가드
-      // ── 품질 게이트 (Q-01): 내부 1.4배 생성 → 유사도 상위 N만 노출 ──
-      const total = Math.ceil(job.requested_cuts * OVERGEN_RATIO);
+      // ── 품질 게이트 (Q-01) ──
+      // 실사: 도착한 실이미지 수만큼 전부 노출 (과생성은 실비 — 시뮬레이터만 1.4배)
+      const realN = isRealJob(jobId) ? realImageCount(jobId) : 0;
+      const total = realN > 0 ? realN : Math.ceil(job.requested_cuts * OVERGEN_RATIO);
       const scores = simScores(jobId, total);
       const ranked = scores
         .map((s, i) => ({ s, i }))
         .sort((a, b) => b.s - a.s);
-      const exposedIdx = new Set(ranked.slice(0, job.requested_cuts).map((r) => r.i));
+      const exposeCount = realN > 0 ? realN : job.requested_cuts;
+      const exposedIdx = new Set(ranked.slice(0, exposeCount).map((r) => r.i));
       const ins = db.prepare(
         `INSERT INTO assets (id, job_id, idx, similarity, exposed, is_best, c2pa_manifest, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -188,7 +227,10 @@ export function tick(db: DB, jobId: string): JobRow {
         "InstantID zero-shot": 0.05,
         "외부 API (Gemini image)": 0.12,
       };
-      const costUsd = Math.round((ENGINE_COST[asm.params?.engine ?? ""] ?? 0.08) * total * 100) / 100;
+      const costUsd =
+        realN > 0
+          ? Math.round(REAL_COST_PER_IMAGE_USD * realN * 100) / 100 // 실사 실비
+          : Math.round((ENGINE_COST[asm.params?.engine ?? ""] ?? 0.08) * total * 100) / 100;
       db.prepare("UPDATE jobs SET cost_usd = ? WHERE id = ?").run(costUsd, jobId);
       const gateMin = ranked[job.requested_cuts - 1]?.s ?? 1;
       // BE-2 (MD-02): 게이트 하한 근접 잡은 모더레이션 큐로 자동 플래그
@@ -226,11 +268,16 @@ export function jobView(db: DB, jobId: string) {
       : Math.min(99, Math.round((elapsed / T_POST) * 100));
   const assets =
     job.status === "done"
-      ? db
-          .prepare(
-            "SELECT id, idx, similarity, hi_res, is_best FROM assets WHERE job_id = ? AND exposed = 1 ORDER BY is_best DESC, similarity DESC"
-          )
-          .all(jobId)
+      ? (
+          db
+            .prepare(
+              "SELECT id, idx, similarity, hi_res, is_best FROM assets WHERE job_id = ? AND exposed = 1 ORDER BY is_best DESC, similarity DESC"
+            )
+            .all(jobId) as { id: string; idx: number }[]
+        ).map((a) => ({
+          ...a,
+          has_image: existsSync(jobImagePath(jobId, a.idx)) ? 1 : 0,
+        }))
       : [];
   return {
     id: job.id,

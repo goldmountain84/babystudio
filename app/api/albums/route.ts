@@ -1,7 +1,9 @@
 // GET /api/albums — 완료된 이미지 잡 + 노출 컷 (설계서 §4.1)
 
 import { NextResponse } from "next/server";
+import { existsSync } from "node:fs";
 import { requireUser, ok } from "@/server/http";
+import { jobImagePath } from "@/server/vendor";
 
 export async function GET(req: Request) {
   const auth = requireUser(req);
@@ -29,7 +31,10 @@ export async function GET(req: Request) {
       id: j.id,
       themeId: j.theme_id,
       createdAt: j.finished_at ?? j.created_at,
-      assets: assetsStmt.all(j.id),
+      assets: (assetsStmt.all(j.id) as { id: string; idx: number }[]).map((a) => ({
+        ...a,
+        has_image: existsSync(jobImagePath(j.id, a.idx)) ? 1 : 0,
+      })),
     })),
   });
 }

@@ -17,7 +17,7 @@ export default function AppSheet({
   const { id } = use(params);
   const router = useRouter();
   const app = getApp(id);
-  const { hydrated, loggedIn, baby, credits, freeCutsLeft, member, startJob } =
+  const { hydrated, loggedIn, baby, credits, freeCutsLeft, member, vendor, startJob } =
     useStore();
 
   const [outfit, setOutfit] = useState<string | undefined>(undefined);
@@ -202,7 +202,10 @@ export default function AppSheet({
 
           <p className="mt-4 text-[11px] leading-relaxed text-[#a99ba5]">
             같은 테마도 매번 다른 컷이 나와요 · 생성물에는 AI 표시(C2PA)가
-            포함돼요 · 생성: GPT 이미지 · 1K
+            포함돼요 · 생성:{" "}
+            {vendor === "gpt-image"
+              ? "GPT 이미지 · 1K (실사)"
+              : "시뮬레이터 (OPENAI_API_KEY 설정 시 실사 전환)"}
           </p>
         </div>
       </div>

@@ -87,6 +87,7 @@ export default function AlbumItemPage({
                 caption={best ? "★ 베스트" : undefined}
                 watermark={!unlocked}
                 video={item.videos.includes(i)}
+                imgSrc={item.imageUrls[i]}
                 className={`h-[110px] md:h-[130px] ${
                   best ? "outline outline-[3px] outline-offset-2 outline-gold" : ""
                 } ${selected === i ? "ring-4 ring-rose/50" : "opacity-95"}`}
@@ -105,6 +106,7 @@ export default function AlbumItemPage({
           watermark={!isHiRes}
           video={hasVideo}
           emojiSize={58}
+          imgSrc={item.imageUrls[selected]}
           className="h-[240px] md:h-[300px]"
         />
         <div className="flex flex-col justify-center gap-2.5">
