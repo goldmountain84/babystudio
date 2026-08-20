@@ -1,0 +1,487 @@
+<title>BabyStudio 백엔드 설계서</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1f2430; --sub:#5b6472; --line:#d7dce4;
+    --accent:#e8618c; --accent-d:#b23a63; --accent-soft:#fdeef3;
+    --blue:#3b6fe0; --blue-soft:#eaf0fd;
+    --note-bg:#fff8e1; --note-line:#e0c264; --note-ink:#8a6d1a;
+    --good:#2b8a5e; --good-soft:#e2f4ea; --warn:#b07a1e; --warn-soft:#fff1db;
+    --crit:#c0392b; --crit-soft:#fdeeec; --purple:#7a5fbf; --purple-soft:#efeaf7;
+    --head-bg:linear-gradient(120deg,#2a2f3d,#4a3d5c); --head-ink:#ffffff; --head-sub:#cfd3e0;
+    --th-bg:#f1f3f7; --code-bg:#f1f3f7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15171d; --card:#1e212a; --ink:#e8eaf0; --sub:#9aa3b2; --line:#343a48;
+      --accent:#f07ba0; --accent-d:#f49ab5; --accent-soft:#39222c;
+      --blue:#84a7f2; --blue-soft:#232c40;
+      --note-bg:#2e2a1c; --note-line:#8a7a3a; --note-ink:#d8c47a;
+      --good:#5cc394; --good-soft:#1e3229; --warn:#dfae5c; --warn-soft:#332b1c;
+      --crit:#e37b6e; --crit-soft:#38221f; --purple:#a48fe0; --purple-soft:#2b2438;
+      --head-bg:linear-gradient(120deg,#1b1e28,#352b40); --head-ink:#f0f1f6; --head-sub:#a9aec0;
+      --th-bg:#262a35; --code-bg:#262a35;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15171d; --card:#1e212a; --ink:#e8eaf0; --sub:#9aa3b2; --line:#343a48;
+    --accent:#f07ba0; --accent-d:#f49ab5; --accent-soft:#39222c;
+    --blue:#84a7f2; --blue-soft:#232c40;
+    --note-bg:#2e2a1c; --note-line:#8a7a3a; --note-ink:#d8c47a;
+    --good:#5cc394; --good-soft:#1e3229; --warn:#dfae5c; --warn-soft:#332b1c;
+    --crit:#e37b6e; --crit-soft:#38221f; --purple:#a48fe0; --purple-soft:#2b2438;
+    --head-bg:linear-gradient(120deg,#1b1e28,#352b40); --head-ink:#f0f1f6; --head-sub:#a9aec0;
+    --th-bg:#262a35; --code-bg:#262a35;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.62; font-size:14px; letter-spacing:-.01em;}
+  code,.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:.92em;}
+  code{background:var(--code-bg); border-radius:5px; padding:1px 6px;}
+  header.doc{background:var(--head-bg); color:var(--head-ink); padding:38px 40px 32px;}
+  header.doc h1{font-size:24px; letter-spacing:-.02em; text-wrap:balance;}
+  header.doc p.tag{color:var(--head-sub); font-size:13.5px; margin-top:8px; max-width:66ch;}
+  .meta{display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; font-size:12px; color:var(--head-sub);}
+  nav.toc{position:sticky; top:0; z-index:50; background:var(--card); border-bottom:1px solid var(--line);
+    padding:10px 40px; display:flex; flex-wrap:wrap; gap:6px;}
+  nav.toc a{font-size:12px; text-decoration:none; color:var(--sub); border:1px solid var(--line);
+    border-radius:20px; padding:4px 11px; white-space:nowrap;}
+  nav.toc a:hover,nav.toc a:focus-visible{background:var(--accent-soft); color:var(--accent); border-color:var(--accent); outline:none;}
+  main{max-width:1080px; margin:0 auto; padding:34px 24px 90px;}
+  section.sec{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:34px; overflow:hidden;}
+  .sec-head{display:flex; align-items:baseline; gap:12px; padding:16px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .sec-head .no{font-weight:800; color:var(--accent); font-size:14px;}
+  .sec-head h2{font-size:17.5px;}
+  .sec-head .why{margin-left:auto; font-size:12px; color:var(--sub);}
+  .sec-body{padding:20px 24px 24px;}
+  h3{font-size:13.5px; color:var(--accent-d); margin:22px 0 8px;}
+  h3:first-child{margin-top:0;}
+  p.lead{color:var(--sub); font-size:13px; max-width:72ch; margin-bottom:12px;}
+  ul.plain{padding-left:18px; font-size:13px;}
+  ul.plain li{margin-bottom:5px;}
+  .tbl-wrap{overflow-x:auto; margin-top:8px;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{background:var(--th-bg); text-align:left; padding:7px 10px; border:1px solid var(--line);
+    white-space:nowrap; font-size:11.5px; color:var(--sub); font-weight:700;}
+  td{padding:7px 10px; border:1px solid var(--line); vertical-align:top;}
+  .num{font-variant-numeric:tabular-nums;}
+  .policy{background:var(--note-bg); border:1px dashed var(--note-line); border-radius:8px;
+    padding:10px 12px; font-size:12.5px; margin-top:14px;}
+  .policy b{color:var(--note-ink);}
+  .pill{display:inline-block; font-size:10.5px; font-weight:800; padding:2px 9px; border-radius:20px; white-space:nowrap;}
+  .p0{background:var(--crit-soft); color:var(--crit);}
+  .p1{background:var(--warn-soft); color:var(--warn);}
+  .p2{background:var(--blue-soft); color:var(--blue);}
+  .schema{background:var(--code-bg); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:12px;
+    line-height:1.7; overflow-x:auto; margin-top:8px; white-space:pre;}
+  .schema .k{color:var(--blue);}
+  .schema .c{color:var(--sub);}
+  .dia{overflow-x:auto; margin-top:10px; border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--card);}
+  footer{max-width:1080px; margin:0 auto; padding:0 24px 60px; font-size:11.5px; color:var(--sub);}
+  a{color:var(--blue);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+</style>
+
+<header class="doc">
+  <h1>🗄 BabyStudio.ai 백엔드 설계서 — 데모에서 프로덕션으로</h1>
+  <p class="tag">MVP 데모(전체 목 프론트엔드)를 실서비스로 전환하기 위한 백엔드 아키텍처·데이터 모델·API·파이프라인 설계. 고도화 기획서 v2.0의 기능 요건과 어드민 화면기획서 v2의 거버넌스 요건을 시스템으로 번역한다.</p>
+  <div class="meta">
+    <span>버전 v1.0</span><span>2026-08-21</span><span>작성: 시절 × Claude</span>
+    <span>선행: 기획서 v1.1 · 고도화기획서 v2.0 · 어드민 화면기획서 v2.0</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#principles">0 설계 원칙</a>
+  <a href="#arch">1 시스템 아키텍처</a>
+  <a href="#stack">2 기술 스택</a>
+  <a href="#schema">3 데이터 모델</a>
+  <a href="#api">4 API 설계</a>
+  <a href="#pipeline">5 생성 파이프라인</a>
+  <a href="#ledger">6 크레딧 원장</a>
+  <a href="#prompt-plane">7 프롬프트 컨트롤 플레인</a>
+  <a href="#safety">8 안전·신뢰 인프라</a>
+  <a href="#auth">9 인증·권한</a>
+  <a href="#analytics">10 이벤트·분석</a>
+  <a href="#nfr">11 비기능 요건</a>
+  <a href="#migration">12 데모→API 매핑</a>
+  <a href="#roadmap">13 구축 로드맵</a>
+</nav>
+
+<main>
+
+<!-- ═══ 0 ═══ -->
+<section class="sec" id="principles">
+  <div class="sec-head"><span class="no">0</span><h2>설계 원칙</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>원칙</th><th>의미</th><th>구현 귀결</th></tr>
+      <tr><td><b>Config-as-Data</b></td><td>프롬프트·테마·가격·랭킹은 코드가 아니라 데이터</td><td>콘솔 저장 = 즉시 반영(무배포). 모든 설정 테이블에 버전·감사 필드</td></tr>
+      <tr><td><b>Append-Only 진실</b></td><td>돈(원장)·권한(감사)·프롬프트(버전)는 수정 불가, 추가만</td><td>UPDATE 없는 테이블 3종: credit_ledger, audit_log, prompt_versions</td></tr>
+      <tr><td><b>큐 중심 비동기</b></td><td>생성·학습·파기는 전부 잡 — API는 접수만, 워커가 실행</td><td>우선순위 큐 + 멱등키 + 재시도 + DLQ. 사용자에겐 SSE로 진행 푸시</td></tr>
+      <tr><td><b>안전 기본값</b></td><td>아동 데이터: 실패 시 안전한 쪽으로</td><td>안전 레이어 서버 강제 주입, 필터 확신 없으면 사람 큐, 원본 TTL 삭제</td></tr>
+      <tr><td><b>서버가 최종 심판</b></td><td>데모의 클라이언트 검증(린터·RBAC·게이트)은 UX일 뿐</td><td>동일 규칙을 API 미들웨어로 재구현 — 클라이언트는 우회 가능 전제</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 1 ═══ -->
+<section class="sec" id="arch">
+  <div class="sec-head"><span class="no">1</span><h2>시스템 아키텍처</h2></div>
+  <div class="sec-body">
+    <div class="dia"><pre class="mermaid">
+flowchart LR
+  subgraph Client
+    W["웹 (Next.js)<br/>사용자 S01~S11"]
+    A["어드민 콘솔<br/>S12-A~G"]
+  end
+  subgraph Core["API 코어 (NestJS)"]
+    GW["API / BFF<br/>인증·RBAC·감사 미들웨어"]
+    SSE["SSE 허브<br/>잡 진행률"]
+  end
+  subgraph Data
+    PG[("PostgreSQL<br/>원장·버전·잡")]
+    RD[("Redis<br/>큐·캐시·세션")]
+    S3[("S3 + CloudFront<br/>생성물·모델 아티팩트")]
+  end
+  subgraph Workers["워커 플릿 (Python)"]
+    TW["학습 워커<br/>LoRA"]
+    GW2["생성 워커<br/>이미지"]
+    VW["영상 워커"]
+    PW["후처리<br/>업스케일·QC·C2PA"]
+    DW["파기 워커<br/>삭제+영수증"]
+  end
+  EXT["외부 생성 API<br/>fal.ai / Replicate / Kling"]
+  PAY["토스페이먼츠 / Stripe<br/>웹훅"]
+  NOTI["알림<br/>카카오 알림톡·웹푸시"]
+  W --> GW
+  A --> GW
+  GW --> PG
+  GW --> RD
+  GW --> SSE
+  RD --> TW & GW2 & VW & PW & DW
+  TW & GW2 & VW --> EXT
+  TW & GW2 & VW & PW --> S3
+  PW --> NOTI
+  PAY --> GW
+    </pre></div>
+    <ul class="plain" style="margin-top:12px;">
+      <li><b>API 코어</b>는 상태를 갖지 않는다 — 접수·검증·권한·과금 예약까지만 하고 큐에 넘긴다. 수평 확장 단위.</li>
+      <li><b>워커</b>는 잡 타입별 독립 플릿 — 영상 워커의 폭주가 이미지 생성을 막지 못하게 큐·스케일링 분리.</li>
+      <li><b>SSE 허브</b>는 Redis pub/sub 구독 → 클라이언트 스트림. 연결 유실 시 폴링 폴백(<code>GET /jobs/:id</code>).</li>
+      <li><b>결제 웹훅</b>이 유일한 크레딧 지급 트리거 — 클라이언트 콜백은 신뢰하지 않는다.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section class="sec" id="stack">
+  <div class="sec-head"><span class="no">2</span><h2>기술 스택 &amp; 선정 근거</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>레이어</th><th>선택</th><th>근거</th></tr>
+      <tr><td>프론트</td><td>Next.js 16 (현 데모 유지)</td><td>SEO 랜딩 + 앱 UX. 데모 코드가 그대로 프로덕션 프론트가 됨</td></tr>
+      <tr><td>API</td><td>NestJS + TypeScript</td><td>프론트와 타입 공유(현 데모의 <code>lib/*.ts</code> 타입을 DTO로 승격), 데코레이터 기반 가드/감사 미들웨어</td></tr>
+      <tr><td>워커</td><td>Python + BullMQ 호환 큐(Redis)</td><td>ML 생태계(임베딩·QC 모델). 잡 스키마는 JSON — 언어 간 호환</td></tr>
+      <tr><td>DB</td><td>PostgreSQL 16</td><td>원장 트랜잭션 + JSONB(프롬프트 파라미터) + 파티셔닝(이벤트)</td></tr>
+      <tr><td>캐시·큐</td><td>Redis (Elasticache)</td><td>우선순위 큐, SSE pub/sub, 카나리 버킷 캐시, rate limit</td></tr>
+      <tr><td>스토리지</td><td>S3 + CloudFront 서명 URL</td><td>원본(단기 TTL 버킷)과 생성물(장기) 버킷 분리 — 파기 정책 독립</td></tr>
+      <tr><td>생성</td><td>fal.ai / Replicate (이미지) · Kling/Runway (영상)</td><td>1단계 종량제. 어댑터 패턴으로 멀티벤더 라우팅 (PC-08)</td></tr>
+      <tr><td>결제</td><td>토스페이먼츠(국내) + Stripe(글로벌)</td><td>웹훅 서명 검증 필수, 멱등키로 중복 지급 방지</td></tr>
+      <tr><td>분석</td><td>자체 이벤트 테이블 → BigQuery/Amplitude</td><td>실험 플랫폼(S12-D)의 지표 원천은 자체 스키마(IN-04)</td></tr>
+      <tr><td>관측성</td><td>OpenTelemetry + Grafana/Sentry</td><td>잡 추적: API 접수 → 큐 → 워커 → 벤더 호출까지 단일 트레이스</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section class="sec" id="schema">
+  <div class="sec-head"><span class="no">3</span><h2>데이터 모델 (핵심 ERD + 테이블 정의)</h2></div>
+  <div class="sec-body">
+    <div class="dia"><pre class="mermaid">
+erDiagram
+  users ||--o{ baby_profiles : "보호자"
+  baby_profiles ||--o{ face_models : "학습 모델"
+  baby_profiles ||--o{ jobs : "생성 대상"
+  themes ||--o{ prompt_versions : "버전 체인"
+  themes ||--o{ jobs : "실행"
+  jobs ||--o{ assets : "결과 컷"
+  jobs ||--o{ job_events : "상태 이력"
+  users ||--o{ credit_ledger : "원장"
+  jobs ||--o| credit_holds : "과금 예약"
+  users ||--o{ orders : "결제"
+  assets ||--o{ clips : "영상 변환"
+  themes ||--o{ experiments : "A/B"
+  jobs ||--o{ moderation_items : "플래그"
+  users ||--o{ audit_log : "어드민 행위"
+    </pre></div>
+
+    <h3>3.1 핵심 테이블 정의 (발췌)</h3>
+    <div class="schema"><span class="k">prompt_versions</span> — append-only (§7)
+  id, theme_id, version_no, status(draft|review|approved|canary|live|archived)
+  positive_tpl, theme_negative, model_params JSONB, canary_pct
+  author_id, approver_id, created_at
+  <span class="c">-- UNIQUE(theme_id, version_no) · status 전이는 저장 프로시저로만 (직접 UPDATE 금지)</span>
+  <span class="c">-- 제약: theme당 live는 정확히 1행 (partial unique index WHERE status='live')</span>
+
+<span class="k">credit_ledger</span> — append-only (§6)
+  id, user_id, delta, balance_after, type(grant|hold|confirm|refund|manual|expire)
+  ref_type(job|order|cs|signup), ref_id, reason_code, actor_id, created_at
+  <span class="c">-- balance_after는 트리거로 계산·검증 — 불일치 시 INSERT 거부</span>
+
+<span class="k">jobs</span>
+  id, idempotency_key UNIQUE, type(train|image|video|timelapse|purge)
+  baby_id, theme_id, prompt_version_id, options JSONB
+  status(queued|running|postprocess|done|failed), priority, attempt, error_code
+  cost_usd, engine, created_at, finished_at
+  <span class="c">-- prompt_version_id 기록 = 실험 지표 귀속의 기준 (어느 버전이 이 잡을 만들었나)</span>
+
+<span class="k">assets</span> (생성 컷)
+  id, job_id, idx, s3_key, similarity_score, qc_flags JSONB
+  exposed BOOLEAN <span class="c">-- 품질 게이트(Q-01) 통과·노출 여부</span>
+  hi_res_unlocked, is_best, watermarked, c2pa_manifest_id
+
+<span class="k">baby_profiles</span>
+  id, user_id, name, birthday, consent_at <span class="c">-- 보호자 확인 시각 (법적 증빙)</span>
+  purge_status(active|purging|purged), purge_receipt_hash</div>
+
+    <h3>3.2 파기·보존 정책 매핑</h3>
+    <div class="tbl-wrap"><table>
+      <tr><th>데이터</th><th>저장 위치</th><th>보존</th><th>파기 트리거</th></tr>
+      <tr><td>업로드 원본</td><td>S3 임시 버킷 (암호화)</td><td>학습 완료 즉시 · 최장 24h TTL</td><td>학습 잡 성공 시 워커가 삭제, TTL은 안전망</td></tr>
+      <tr><td>학습 모델 아티팩트</td><td>S3 모델 버킷 (암호화)</td><td>프로필 유효 기간</td><td>프로필 삭제·계정 탈퇴 → purge 잡</td></tr>
+      <tr><td>생성물</td><td>S3 생성물 버킷</td><td>무료 30일 / 유료 무기한</td><td>만료 배치 · 사용자 파기 요청</td></tr>
+      <tr><td>원장·감사로그</td><td>PostgreSQL</td><td>법정 보존 기간 (5년)</td><td>파기 대상 아님 — 개인정보는 가명화 처리</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section class="sec" id="api">
+  <div class="sec-head"><span class="no">4</span><h2>API 설계 (REST + SSE)</h2></div>
+  <div class="sec-body">
+    <h3>4.1 사용자 API</h3>
+    <div class="tbl-wrap"><table>
+      <tr><th>엔드포인트</th><th>동작</th><th>비고</th></tr>
+      <tr><td class="mono">POST /auth/{kakao|google|apple}</td><td>소셜 로그인 → 세션 JWT</td><td>최초 로그인 시 회원 생성 + 가입 보상 grant</td></tr>
+      <tr><td class="mono">POST /babies · PATCH /babies/:id</td><td>프로필 생성·수정</td><td>보호자 동의 필드 필수 (consent_at)</td></tr>
+      <tr><td class="mono">POST /babies/:id/photos</td><td>업로드 presigned URL 발급</td><td>클라 직접 S3 업로드 → 완료 콜백에서 검증 잡</td></tr>
+      <tr><td class="mono">POST /babies/:id/train</td><td>학습 잡 접수</td><td>idempotency-key 헤더 필수</td></tr>
+      <tr><td class="mono">GET /themes?milestone=</td><td>테마 카탈로그 (live 버전 메타만)</td><td>프롬프트 원문 미포함 — 서버 조립 (T-01)</td></tr>
+      <tr><td class="mono">POST /jobs</td><td>생성 잡 접수 {theme, options}</td><td>크레딧 hold → 큐. 부족 시 402 + 필요액</td></tr>
+      <tr><td class="mono">GET /jobs/:id · GET /jobs/:id/stream</td><td>상태 조회 · SSE 진행률</td><td>단계: queued→running→postprocess→done</td></tr>
+      <tr><td class="mono">GET /albums · GET /albums/:id</td><td>앨범·결과 조회</td><td>노출 컷(exposed=true)만 반환</td></tr>
+      <tr><td class="mono">POST /assets/:id/{hires|video|regen|best}</td><td>고해상도 해금·영상 변환·재생성·베스트</td><td>각각 hold 기반 과금</td></tr>
+      <tr><td class="mono">GET /share/:token</td><td>공개 공유 페이지 데이터</td><td>비인증 · 워터마크 컷만 (R-05)</td></tr>
+      <tr><td class="mono">POST /orders · POST /webhooks/payment</td><td>결제 생성 · 웹훅 수신</td><td>지급은 웹훅에서만, 서명 검증 + 멱등</td></tr>
+      <tr><td class="mono">POST /me/purge</td><td>전체 파기 요청</td><td>purge 잡 → 완료 시 삭제 영수증 발급 (TR-01)</td></tr>
+    </table></div>
+    <h3>4.2 어드민 API (전부 RBAC 가드 + 감사 미들웨어 경유)</h3>
+    <div class="tbl-wrap"><table>
+      <tr><th>엔드포인트</th><th>동작</th><th>권한</th></tr>
+      <tr><td class="mono">POST /admin/themes/:id/versions</td><td>draft 생성 (서버 린터 실행)</td><td>기획자+</td></tr>
+      <tr><td class="mono">POST /admin/versions/:id/{review|approve|canary}</td><td>워크플로 전이</td><td>approve는 리드 &amp; author≠approver (서버 강제)</td></tr>
+      <tr><td class="mono">POST /admin/themes/:id/rollback</td><td>롤백 {target, reason}</td><td>리드 · 카나리 자동 중단 포함 트랜잭션</td></tr>
+      <tr><td class="mono">POST /admin/themes/:id/stage</td><td>라이프사이클 전이</td><td>체크리스트 서버 검증 · GA는 리드</td></tr>
+      <tr><td class="mono">POST /admin/mod/:id/{approve|block|escalate}</td><td>모더레이션 결정</td><td>모더레이터</td></tr>
+      <tr><td class="mono">POST /admin/users/:id/credits</td><td>수동 조정 {delta, reason_code}</td><td>CS · |delta|&gt;100은 승인 플로우 생성</td></tr>
+      <tr><td class="mono">GET /admin/users/:id?view_reason=</td><td>사용자 360 (열람 사유 필수)</td><td>사유 없으면 400 · 열람 감사 기록</td></tr>
+      <tr><td class="mono">GET /admin/metrics/*</td><td>대시보드·손익·퍼널 집계</td><td>역할별 범위 제한</td></tr>
+    </table></div>
+    <div class="policy"><b>규약</b> — 모든 쓰기 API는 <code>Idempotency-Key</code> 지원. 에러는 <code>{code, message, hint}</code> 구조 통일(데모 토스트 문구가 message의 원형). 페이지네이션은 커서 기반.</div>
+  </div>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section class="sec" id="pipeline">
+  <div class="sec-head"><span class="no">5</span><h2>생성 파이프라인 (잡 오케스트레이션)</h2></div>
+  <div class="sec-body">
+    <div class="dia"><pre class="mermaid">
+sequenceDiagram
+  participant C as 클라이언트
+  participant API as API 코어
+  participant L as 원장
+  participant Q as Redis 큐
+  participant W as 생성 워커
+  participant V as 외부 생성 API
+  participant P as 후처리 워커
+  C->>API: POST /jobs (테마, 옵션, 멱등키)
+  API->>L: 크레딧 hold (트랜잭션)
+  API->>Q: enqueue (우선순위: 유료>무료)
+  API-->>C: 202 {jobId} → SSE 구독
+  Q->>W: 잡 수령
+  W->>API: 프롬프트 조립 요청 (버전 라우팅)
+  W->>V: 생성 호출 (내부 14컷)
+  V-->>W: 컷 반환
+  W->>P: 후처리 잡
+  P->>P: QC: 유사도·결함 필터 → 상위 10컷만 exposed
+  P->>P: 업스케일 · 워터마크 · C2PA 서명
+  P->>L: hold confirm (성공) / refund (실패)
+  P-->>C: SSE done + 알림톡 발송
+    </pre></div>
+    <h3>큐·재시도 정책</h3>
+    <ul class="plain">
+      <li><b>우선순위</b>: 익스프레스(유료 부스트) &gt; 구독자 &gt; 유료 단건 &gt; 무료. 큐별 워커 플릿 분리(이미지/영상/학습/파기)</li>
+      <li><b>재시도</b>: 벤더 5xx·타임아웃 → 지수 백오프 3회. 벤더 장애 감지 시 어댑터가 대체 엔진으로 페일오버(PC-08) — 단, 동일 시드 보장이 불가하므로 잡 메타에 엔진 전환 기록</li>
+      <li><b>DLQ</b>: 3회 실패 → 데드레터 + 자동 환불 + S12-A 경보. 운영자 원클릭 재실행(무과금)</li>
+      <li><b>멱등성</b>: <code>idempotency_key</code> UNIQUE — 재제출 시 기존 잡 반환. hold도 잡당 1회 보장</li>
+      <li><b>품질 게이트(Q-01)</b>: 요청 컷 수의 1.4배 내부 생성 → 유사도(face embedding cosine)·QC 분류기 통과 상위 N만 <code>exposed=true</code>. 부족 시 1회 추가 생성, 그래도 미달이면 부분 환불 + 사과 UX</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section class="sec" id="ledger">
+  <div class="sec-head"><span class="no">6</span><h2>크레딧 원장 (돈의 상태기계)</h2></div>
+  <div class="sec-body">
+    <div class="dia"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> hold : 잡 접수 (예약)
+  hold --> confirmed : 잡 성공 → 확정 차감
+  hold --> refunded : 잡 실패·취소 → 자동 반환
+  hold --> refunded : 24h 미결 → 배치 강제 반환
+    </pre></div>
+    <ul class="plain" style="margin-top:12px;">
+      <li><b>원장 규칙</b>: 모든 잔액 변화는 <code>credit_ledger</code> INSERT로만. <code>balance_after</code>는 DB 트리거가 직전 행 기준 검증 — 응용 코드 버그가 잔액을 오염시킬 수 없다</li>
+      <li><b>hold 구현</b>: <code>credit_holds</code>(job_id UNIQUE, amount, state) + 원장에 hold 행. 가용 잔액 = 원장 잔액 − 활성 hold 합</li>
+      <li><b>동시성</b>: 사용자 단위 advisory lock으로 hold 경합 직렬화 (더블 스펜딩 방지)</li>
+      <li><b>리컨실(IN-02)</b>: 일 배치 — ① 원장 합계 vs 유저 캐시 잔액 ② 지급 합계 vs PG 정산 금액 ③ 24h 초과 hold. 불일치 → 경보 + 자동 티켓</li>
+      <li><b>수동 조정(DF-03)</b>: reason_code 필수, |delta|&gt;100은 <code>approval_requests</code> 생성 → 리드 승인 시 실행. 데모의 즉시 차단 UX가 이 플로우의 축약형</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section class="sec" id="prompt-plane">
+  <div class="sec-head"><span class="no">7</span><h2>프롬프트 컨트롤 플레인 (S12-B의 서버측)</h2></div>
+  <div class="sec-body">
+    <h3>7.1 프롬프트 조립 (요청 시점, 서버 전용)</h3>
+    <div class="schema"><span class="c">// 생성 워커가 호출하는 조립 함수 — 순서가 곧 보안 모델</span>
+assemble(job):
+  v = routeVersion(job.theme_id, job.user_id)      <span class="c">// ① 버전 라우팅 (카나리 버킷)</span>
+  pos = substitute(v.positive_tpl, {
+    outfit: vocab[job.options.outfit],             <span class="c">// ② 어휘 사전 치환 (PC-02)</span>
+    background: vocab[job.options.background],
+    age_style: ageStyle(baby.birthday),            <span class="c">// ③ 개월수 자동 주입 (Q-03)</span>
+  })
+  neg = concat(global_negative, milestone_negative(v.theme),
+               v.theme_negative,
+               SAFETY_LAYER)                       <span class="c">// ④ 안전 레이어 — 코드 상수, DB 아님</span>
+  assert lint(pos) == []                           <span class="c">// ⑤ 이중 방어: 조립 결과 재린트</span>
+  return {pos, neg, params: v.model_params, version_id: v.id}</div>
+    <ul class="plain" style="margin-top:10px;">
+      <li><b>① 카나리 라우팅</b>: <code>hash(user_id + theme_id) % 100 &lt; canary_pct</code> — 같은 사용자는 같은 버전(경험 일관성). 라우팅 결과는 잡에 <code>prompt_version_id</code>로 각인 → 지표 귀속</li>
+      <li><b>④ 안전 레이어</b>: DB가 아닌 배포 아티팩트 상수 — 콘솔·DB 어느 경로로도 수정 불가(PC-04). 변경은 코드 리뷰 + 배포</li>
+      <li><b>자동 승격 잡</b>: 15분 배치 — 카나리 표본·지표 집계(잡→베스트컷 선택 이벤트 조인) → 표본 ≥200 &amp; 유의성(2-proportion z-test) → 트랜잭션으로 live 교체 + 경보 + 감사</li>
+      <li><b>열화 감지(PC-09)</b>: live 버전 선택률 24h 이동평균 −10%p → 경보. −20%p → 직전 archived로 자동 롤백 옵션(설정 가능)</li>
+      <li><b>상태 전이 무결성</b>: 전이는 저장 프로시저 <code>promote_version()</code> 등으로만 — 트랜잭션 안에서 "live 정확히 1행" 제약과 함께 원자적 교체</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ 8 ═══ -->
+<section class="sec" id="safety">
+  <div class="sec-head"><span class="no">8</span><h2>안전·신뢰 인프라</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>시스템</th><th>설계</th></tr>
+      <tr><td><b>3중 필터 (MD-01)</b></td><td>① 업로드: 얼굴 검출·연령 추정·NSFW (검증 워커, 실패 시 반려 사유 구조화) ② 프롬프트: 서버 린터(§7 ⑤) ③ 생성물: NSFW·결함 분류기(후처리 워커). 확신도 40~75% 구간만 휴먼 큐 유입</td></tr>
+      <tr><td><b>모더레이션 큐</b></td><td><code>moderation_items</code> + SLA 타이머(2h). 결정 → <code>filter_feedback</code> 테이블 → 주간 필터 재학습 배치. 검수 열람은 임시 서명 URL(5분)로만 — 다운로드 경로 없음</td></tr>
+      <tr><td><b>CSAM (MD-05)</b></td><td>전용 격리 버킷(별도 KMS 키) 이동 + 해시 보존 + 지정 담당자 알림 + 계정 즉시 정지 — 원버튼 API <code>POST /admin/mod/:id/csam</code>가 전 절차를 원자 실행</td></tr>
+      <tr><td><b>파기 파이프라인 (TR-01)</b></td><td>purge 잡: 모델 아티팩트 → 생성물 → DB 가명화 순서로 삭제, 각 단계 삭제 대상의 SHA-256 머클루트 계산 → 영수증 {루트해시, 시각, 항목 수} 서명 발급 + 이메일. SLA 60분, 대시보드 추적</td></tr>
+      <tr><td><b>C2PA (TR-02)</b></td><td>후처리 워커가 서명 매니페스트 삽입(서명키는 KMS). 매니페스트 ID를 assets에 기록 — 커버리지 집계가 곧 신뢰 지표</td></tr>
+      <tr><td><b>접근 제어</b></td><td>생성물 서명 URL 24h 만료 · 원본 버킷은 워커 롤만 접근 · 모델 아티팩트 암호화(프로필별 키) — 키 폐기 = 즉시 복호 불능(crypto-shredding)</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 9 ═══ -->
+<section class="sec" id="auth">
+  <div class="sec-head"><span class="no">9</span><h2>인증·권한</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>대상</th><th>설계</th></tr>
+      <tr><td><b>사용자</b></td><td>카카오·구글·애플 OAuth → 자체 세션 JWT(15분) + 리프레시(14일, rotate). 보호자 확인 체크는 <code>consent_at</code>으로 영구 기록</td></tr>
+      <tr><td><b>어드민</b></td><td>사내 SSO(OIDC) + TOTP 2FA 강제. 역할 클레임(리드/운영자/모더레이터/CS/재무) → NestJS 가드가 라우트별 검사. 데모의 역할 전환기는 이 클레임의 시뮬레이션</td></tr>
+      <tr><td><b>RBAC 강제</b></td><td>데모의 <code>ROLE_ACCESS</code> 맵을 서버 라우트 가드로 이관 — 프론트 필터링은 UX, 서버 403이 진실. 모든 거부도 감사로그</td></tr>
+      <tr><td><b>4-eyes 강제</b></td><td><code>approve()</code> 프로시저에서 author_id ≠ approver_id 검증 — DB 레벨 CHECK. 대량 크레딧은 approval_requests 2단계</td></tr>
+      <tr><td><b>감사 미들웨어</b></td><td>어드민 라우터 전역 인터셉터 — 요청·행위자·대상·사유를 audit_log INSERT (실패해도 요청 차단, fail-closed)</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 10 ═══ -->
+<section class="sec" id="analytics">
+  <div class="sec-head"><span class="no">10</span><h2>이벤트·분석 스키마 (IN-04)</h2></div>
+  <div class="sec-body">
+    <p class="lead">실험 플랫폼(S12-D)·품질 지표(베스트컷 선택률)·퍼널의 단일 원천. 이벤트는 API가 직접 기록(서버 사이드) — 클라이언트 계측은 보조.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>이벤트</th><th>속성</th><th>쓰임</th></tr>
+      <tr><td class="mono">theme_run</td><td>theme, prompt_version, options, credits</td><td>실행수·실험 분모</td></tr>
+      <tr><td class="mono">best_cut_pick</td><td>job, asset_idx, similarity</td><td>베스트컷 선택률 (핵심 품질 지표)</td></tr>
+      <tr><td class="mono">regen · hires_unlock · video_convert</td><td>job, asset, credits</td><td>재생성률·전환 지표</td></tr>
+      <tr><td class="mono">share_create · share_visit · share_signup</td><td>token, referrer</td><td>K-factor · 공유→가입 전환</td></tr>
+      <tr><td class="mono">purchase · subscribe · churn</td><td>order, plan, amount</td><td>매출 퍼널·LTV</td></tr>
+      <tr><td class="mono">dday_notify · dday_click</td><td>milestone, dday</td><td>CRM 저니 효과 측정</td></tr>
+    </table></div>
+    <p class="lead" style="margin-top:10px;">저장: <code>events</code> 월 파티션 테이블 → 일 배치로 집계 테이블(<code>metrics_daily</code>: theme×version×day) 롤업 → S12-A/G/D가 집계 테이블만 조회. 원시 이벤트는 90일 후 웨어하우스로 이관.</p>
+  </div>
+</section>
+
+<!-- ═══ 11 ═══ -->
+<section class="sec" id="nfr">
+  <div class="sec-head"><span class="no">11</span><h2>비기능 요건 (SLO·보안·확장)</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>항목</th><th>목표</th><th>수단</th></tr>
+      <tr><td>API 가용성</td><td class="num">99.9%</td><td>멀티 AZ, 무상태 수평 확장, 헬스체크</td></tr>
+      <tr><td>이미지 잡 p95</td><td class="num">&lt; 3분</td><td>워커 오토스케일(큐 길이 기반), 벤더 페일오버</td></tr>
+      <tr><td>잡 실패율</td><td class="num">&lt; 2%</td><td>재시도 + DLQ + 원클릭 재실행. 에러버짓 소진 시 릴리즈 동결</td></tr>
+      <tr><td>SSE 지연</td><td class="num">&lt; 2s</td><td>Redis pub/sub, 폴링 폴백</td></tr>
+      <tr><td>파기 SLA</td><td class="num">&lt; 60분</td><td>purge 전용 큐 최우선 처리 + 대시보드 추적</td></tr>
+      <tr><td>보안</td><td>—</td><td>전 구간 TLS, at-rest 암호화(KMS), rate limit(유저·IP), WAF, 시크릿 볼트, 연 1회 침투 테스트, SOC 2 로드맵</td></tr>
+      <tr><td>재해복구</td><td class="num">RPO 5분 / RTO 1h</td><td>PG PITR + 스냅샷, S3 버전닝, IaC(Terraform) 재구축</td></tr>
+    </table></div>
+    <div class="policy"><b>원가 통제(④)</b> — 모든 벤더 호출은 어댑터에서 비용 기록 → <code>jobs.cost_usd</code>. 일 예산 소진 80%에 경보, 100%에 무료 티어 큐 지연 전환(유료 우선 보장). 이 데이터가 자체 GPU 전환(V3)의 판단 근거.</div>
+  </div>
+</section>
+
+<!-- ═══ 12 ═══ -->
+<section class="sec" id="migration">
+  <div class="sec-head"><span class="no">12</span><h2>데모 → API 마이그레이션 매핑</h2></div>
+  <div class="sec-body">
+    <p class="lead">현 데모의 목 스토어 액션을 API 호출로 1:1 치환한다. 화면·상태 구조는 유지 — 프론트 재작성이 아니라 데이터 소스 교체.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>데모 (lib/store.tsx · adminStore.tsx)</th><th>실서비스 API</th><th>변경 포인트</th></tr>
+      <tr><td class="mono">login()</td><td class="mono">POST /auth/kakao</td><td>OAuth 리다이렉트 플로우</td></tr>
+      <tr><td class="mono">setBaby + 업로드 슬롯</td><td class="mono">POST /babies → /photos → /train</td><td>presigned 업로드 + 검증 결과 폴링</td></tr>
+      <tr><td class="mono">startJob() 즉시 차감</td><td class="mono">POST /jobs (hold)</td><td>402 처리 → 인라인 충전 시트(P-01)</td></tr>
+      <tr><td class="mono">JOB_DURATION_MS 타이머</td><td class="mono">GET /jobs/:id/stream (SSE)</td><td>단계 이벤트를 그대로 STAGES에 매핑</td></tr>
+      <tr><td class="mono">completeJob() → 랜덤 컷</td><td class="mono">GET /albums/:id</td><td>PhotoArt → 서명 URL 이미지</td></tr>
+      <tr><td class="mono">addCredits() (요금제)</td><td class="mono">POST /orders + 웹훅</td><td>토스 결제창 연동, 지급은 웹훅</td></tr>
+      <tr><td class="mono">saveDraft/approve/rollbackTo</td><td class="mono">POST /admin/versions/*</td><td>검증 로직은 서버로 이동, 프론트는 에러 표시만</td></tr>
+      <tr><td class="mono">simulateCanaryTraffic()</td><td>자동 승격 배치 (서버)</td><td>버튼 제거 — 카나리 패널은 조회 전용</td></tr>
+      <tr><td class="mono">역할 전환기</td><td>SSO 역할 클레임</td><td>전환기 제거, 클레임 표시만</td></tr>
+      <tr><td class="mono">resetAll() → 영수증</td><td class="mono">POST /me/purge</td><td>비동기 — 완료 알림 + 영수증 이메일</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══ 13 ═══ -->
+<section class="sec" id="roadmap">
+  <div class="sec-head"><span class="no">13</span><h2>구축 로드맵</h2></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>단계</th><th>기간</th><th>범위</th><th>완료 판정</th></tr>
+      <tr><td><span class="pill p0">BE-1</span><br><b>코어 루프</b></td><td class="num">4주</td><td>인증·프로필·업로드 검증, 잡 오케스트레이션(이미지), 크레딧 원장(hold/confirm/refund), 프롬프트 조립+카나리 라우팅, 결제 웹훅, 품질 게이트 v1(유사도)</td><td>실사용자 1명이 데모와 동일한 퍼널을 실제 생성으로 완주</td></tr>
+      <tr><td><span class="pill p0">BE-2</span><br><b>신뢰·운영</b></td><td class="num">+3주</td><td>3중 필터+모더레이션 큐, 파기 파이프라인+영수증, C2PA 서명, 어드민 RBAC/감사 서버 강제, 이벤트 스키마+집계, 경보</td><td>삭제 SLA 60분 증명 · 어드민 데모 기능 전부 실데이터 동작</td></tr>
+      <tr><td><span class="pill p1">BE-3</span><br><b>성장 장치</b></td><td class="num">+4주</td><td>영상 워커, 자동 승격 배치+실험 플랫폼, 멀티벤더 라우팅, 알림톡 CRM 저니, 구독 빌링, 리컨실 배치</td><td>프롬프트 개선 리드타임 &lt;24h 무배포 달성</td></tr>
+      <tr><td><span class="pill p2">BE-4</span><br><b>스케일</b></td><td class="num">지속</td><td>타임랩스·굿즈 파트너 API, i18n, 관측성 고도화, SOC 2 준비, 자체 GPU 검토(원가 데이터 기반)</td><td>월 원가 리포트로 GPU 전환 손익분기 판단</td></tr>
+    </table></div>
+    <div class="policy"><b>첫 스프린트 권고</b> — BE-1의 심장은 ① 크레딧 원장(§6)과 ② 프롬프트 조립+라우팅(§7). 이 둘은 이후 모든 기능의 지반이고 나중에 고치기 가장 비싼 부분이다. 잡 오케스트레이션은 관리형 큐로 시작해도 되지만, 원장 스키마와 버전 상태기계는 첫날부터 이 문서대로 간다.</div>
+  </div>
+</section>
+
+</main>
+<footer>BabyStudio.ai 백엔드 설계서 v1.0 — 프론트 화면 정의는 화면기획서 v1.1(사용자)·v2.0(어드민), 기능 요건은 고도화 기획서 v2.0 참조. 다이어그램은 머메이드로 작성되어 아티팩트 뷰어에서 렌더링된다.</footer>

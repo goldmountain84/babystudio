@@ -1,26 +1,380 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-cream: #fff9f4;
+  --color-blush: #fde8ec;
+  --color-rose: #e8618c;
+  --color-rose-d: #c94a73;
+  --color-peach: #ffb98a;
+  --color-ink: #332b33;
+  --color-sub: #8a7e88;
+  --color-gold: #c9a96a;
+  --color-mint: #bfe3d6;
+  --color-line: #f0e4e0;
+  --font-sans: var(--font-noto-sans), "Pretendard", "Apple SD Gothic Neo",
+    "Noto Sans KR", sans-serif;
+  --font-serif: var(--font-noto-serif), "Nanum Myeongjo", "Noto Serif KR",
+    Georgia, serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+/* ===== CTA buttons ===== */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(120deg, #e8618c, #f08cad);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(232, 97, 140, 0.35);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+.cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 22px rgba(232, 97, 140, 0.45);
+}
+.cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.cta.big {
+  padding: 15px 34px;
+  font-size: 15px;
+}
+.cta.ghost {
+  background: #fff;
+  color: var(--color-rose);
+  box-shadow: none;
+  border: 1.5px solid var(--color-rose);
+}
+.cta.ghost:hover {
+  background: var(--color-blush);
+  box-shadow: none;
+}
+.cta.dark {
+  background: var(--color-ink);
+  box-shadow: 0 6px 16px rgba(51, 43, 51, 0.3);
+}
+
+/* ===== pills / chips ===== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12px;
+  color: #7d6f7a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.pill:hover {
+  border-color: var(--color-rose);
+  color: var(--color-rose-d);
+}
+.pill.hot {
+  background: var(--color-blush);
+  border-color: #f5c2d0;
+  color: var(--color-rose-d);
+}
+.pill.on {
+  background: var(--color-ink);
+  color: #fff;
+  border-color: var(--color-ink);
+}
+.pill.sel {
+  background: var(--color-blush);
+  border-color: var(--color-rose);
+  color: var(--color-rose-d);
+}
+
+/* ===== badges ===== */
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+}
+.b-hot { background: #ffe3ea; color: #d6336c; }
+.b-new { background: #e2f4ea; color: #2b8a5e; }
+.b-season { background: #fff1db; color: #b07a1e; }
+.b-free { background: #e7f0fd; color: #3b6fe0; }
+.b-lock { background: #efeaf7; color: #7a5fbf; }
+
+/* ===== photo art placeholders (실사 컷이 들어갈 자리) ===== */
+.ph {
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+.ph .emo {
+  font-size: 42px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  animation: drift 4.5s ease-in-out infinite;
+}
+.ph .cap {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.g-hanbok { background: linear-gradient(150deg, #f7b2c4, #e8618c 55%, #b44d74); }
+.g-angel { background: linear-gradient(150deg, #dce9f9, #afc9ee 55%, #8fa8d8); color: #3d4a66; text-shadow: none; }
+.g-balloon { background: linear-gradient(150deg, #ffd9a0, #ffb98a 55%, #ee9a6b); }
+.g-flower { background: linear-gradient(150deg, #d9efd9, #a8d8b0 55%, #7cbb8c); }
+.g-moon { background: linear-gradient(150deg, #4a4a72, #31315c 60%, #232345); }
+.g-ghibli { background: linear-gradient(150deg, #bfe3d6, #8fc9b8 55%, #67ac97); }
+.g-tux { background: linear-gradient(150deg, #d8d3e8, #a9a0c9 55%, #7e759f); }
+.g-cake { background: linear-gradient(150deg, #fbe3ec, #f2a9c4 55%, #de7fa6); }
+.g-picnic { background: linear-gradient(150deg, #fdebc8, #f5ce85 55%, #dfaf5c); }
+.g-snow { background: linear-gradient(150deg, #eaf3fa, #c8def0 55%, #a3c4e2); color: #3d4a66; text-shadow: none; }
+.g-b100 { background: linear-gradient(150deg, #fce7d8, #f5bfa1 55%, #e09a78); }
+.g-cloud { background: linear-gradient(150deg, #f6eff9, #decdef 55%, #bba3d8); color: #4d3d66; text-shadow: none; }
+.g-sea { background: linear-gradient(150deg, #cfeef5, #8fd0e0 55%, #5ba9c4); }
+.g-fruit { background: linear-gradient(150deg, #ffe0dc, #ff9e94 55%, #e56e63); }
+.g-dream { background: linear-gradient(150deg, #d9e4fb, #94aef0 55%, #6a86d6); }
+.g-bw { background: linear-gradient(150deg, #e8e8e8, #a8a8a8 55%, #6e6e6e); }
+
+.play {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+@keyframes drift {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.06) translateY(-4px); }
+}
+.shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.28) 48%,
+    transparent 62%
+  );
+  transform: translateX(-100%);
+  animation: sw 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes sw {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+
+.wm-tag {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  font-size: 9px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: #fff;
+  letter-spacing: 0.1em;
+}
+
+/* card */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(60, 40, 55, 0.08);
+  border: 1px solid var(--color-line);
+}
+
+.serif {
+  font-family: var(--font-serif);
+}
+
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fadeup {
+  animation: fadeup 0.45s ease both;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* ═══════════ 어드민 콘솔 (S12) ═══════════ */
+.atable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.atable th {
+  background: #f5f0ee;
+  text-align: left;
+  padding: 7px 10px;
+  border: 1px solid var(--color-line);
+  font-size: 11px;
+  color: var(--color-sub);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.atable td {
+  padding: 7px 10px;
+  border: 1px solid var(--color-line);
+  vertical-align: top;
+}
+.atable tr:hover td {
+  background: #fdf8f5;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 버전 상태 pill */
+.vs {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.vs-draft { background: #eef1f5; color: #5b6472; }
+.vs-review { background: #fff1db; color: #b07a1e; }
+.vs-approved { background: #e7f0fd; color: #3b6fe0; }
+.vs-canary { background: #efeaf7; color: #7a5fbf; }
+.vs-live { background: #e2f4ea; color: #2b8a5e; }
+.vs-archived { background: #f4f1f0; color: #a99ba5; }
+
+/* 경보 */
+.alert-crit { border-left: 3px solid #c0392b; background: #fdf1ef; }
+.alert-warn { border-left: 3px solid #b07a1e; background: #fff8ec; }
+.alert-info { border-left: 3px solid #3b6fe0; background: #eff4fd; }
+
+/* diff */
+.diff-del { background: #fde3e3; color: #a33; text-decoration: line-through; border-radius: 3px; padding: 0 2px; }
+.diff-ins { background: #dff3e6; color: #1d6b42; border-radius: 3px; padding: 0 2px; }
+
+/* 스탯 타일 */
+.stat {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+.stat .lb {
+  font-size: 11px;
+  color: var(--color-sub);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.stat .v {
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+.stat .d {
+  font-size: 11px;
+  color: var(--color-sub);
+  margin-top: 2px;
+}
+
+/* 바 차트 (단일 시리즈) */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 120px;
+  padding-top: 18px;
+}
+.bars .bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  justify-content: flex-end;
+  position: relative;
+}
+.bars .fill {
+  width: 100%;
+  max-width: 34px;
+  background: var(--color-rose);
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.15s;
+  position: relative;
+}
+.bars .bar:hover .fill { opacity: 0.75; }
+.bars .bar .tip {
+  display: none;
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  z-index: 5;
+}
+.bars .bar:hover .tip { display: block; }
+.bars .dl {
+  font-size: 10px;
+  color: var(--color-sub);
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+}
+code.tok {
+  background: #f5f0ee;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  padding: 1px 6px;
 }

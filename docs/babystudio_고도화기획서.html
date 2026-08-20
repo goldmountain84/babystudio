@@ -1,0 +1,414 @@
+<title>BabyStudio 고도화 기획서</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1f2430; --sub:#5b6472; --line:#d7dce4;
+    --accent:#e8618c; --accent-d:#b23a63; --accent-soft:#fdeef3;
+    --blue:#3b6fe0; --blue-soft:#eaf0fd;
+    --note-bg:#fff8e1; --note-line:#e0c264; --note-ink:#8a6d1a;
+    --good:#2b8a5e; --good-soft:#e2f4ea; --warn:#b07a1e; --warn-soft:#fff1db;
+    --crit:#c0392b; --crit-soft:#fdeeec;
+    --head-bg:linear-gradient(120deg,#2a2f3d,#4a3d5c); --head-ink:#ffffff; --head-sub:#cfd3e0;
+    --th-bg:#f1f3f7; --code-bg:#f1f3f7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15171d; --card:#1e212a; --ink:#e8eaf0; --sub:#9aa3b2; --line:#343a48;
+      --accent:#f07ba0; --accent-d:#f49ab5; --accent-soft:#39222c;
+      --blue:#84a7f2; --blue-soft:#232c40;
+      --note-bg:#2e2a1c; --note-line:#8a7a3a; --note-ink:#d8c47a;
+      --good:#5cc394; --good-soft:#1e3229; --warn:#dfae5c; --warn-soft:#332b1c;
+      --crit:#e37b6e; --crit-soft:#38221f;
+      --head-bg:linear-gradient(120deg,#1b1e28,#352b40); --head-ink:#f0f1f6; --head-sub:#a9aec0;
+      --th-bg:#262a35; --code-bg:#262a35;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15171d; --card:#1e212a; --ink:#e8eaf0; --sub:#9aa3b2; --line:#343a48;
+    --accent:#f07ba0; --accent-d:#f49ab5; --accent-soft:#39222c;
+    --blue:#84a7f2; --blue-soft:#232c40;
+    --note-bg:#2e2a1c; --note-line:#8a7a3a; --note-ink:#d8c47a;
+    --good:#5cc394; --good-soft:#1e3229; --warn:#dfae5c; --warn-soft:#332b1c;
+    --crit:#e37b6e; --crit-soft:#38221f;
+    --head-bg:linear-gradient(120deg,#1b1e28,#352b40); --head-ink:#f0f1f6; --head-sub:#a9aec0;
+    --th-bg:#262a35; --code-bg:#262a35;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.62; font-size:14px;
+    letter-spacing:-0.01em;
+  }
+  code,.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:.92em;}
+  code{background:var(--code-bg); border-radius:5px; padding:1px 6px;}
+
+  header.doc{background:var(--head-bg); color:var(--head-ink); padding:38px 40px 32px;}
+  header.doc h1{font-size:24px; letter-spacing:-.02em; text-wrap:balance;}
+  header.doc p.tag{color:var(--head-sub); font-size:13.5px; margin-top:8px; max-width:62ch;}
+  .meta{display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; font-size:12px; color:var(--head-sub);}
+
+  nav.toc{position:sticky; top:0; z-index:50; background:var(--card); border-bottom:1px solid var(--line);
+    padding:10px 40px; display:flex; flex-wrap:wrap; gap:6px;}
+  nav.toc a{font-size:12px; text-decoration:none; color:var(--sub); border:1px solid var(--line);
+    border-radius:20px; padding:4px 11px; white-space:nowrap;}
+  nav.toc a:hover, nav.toc a:focus-visible{background:var(--accent-soft); color:var(--accent); border-color:var(--accent); outline:none;}
+
+  main{max-width:1080px; margin:0 auto; padding:34px 24px 90px;}
+
+  section.sec{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:34px; overflow:hidden;}
+  .sec-head{display:flex; align-items:baseline; gap:12px; padding:16px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .sec-head .no{font-weight:800; color:var(--accent); font-size:14px; letter-spacing:.02em;}
+  .sec-head h2{font-size:17.5px; letter-spacing:-.01em;}
+  .sec-head .why{margin-left:auto; font-size:12px; color:var(--sub);}
+  .sec-body{padding:20px 24px 24px;}
+
+  h3{font-size:13.5px; color:var(--accent-d); margin:22px 0 8px; letter-spacing:.01em;}
+  h3:first-child{margin-top:0;}
+  h3 .sub{color:var(--sub); font-weight:500; font-size:12px;}
+  p.lead{color:var(--sub); font-size:13px; max-width:70ch; margin-bottom:12px;}
+  ul.plain{padding-left:18px; font-size:13px;}
+  ul.plain li{margin-bottom:5px;}
+  ul.plain li b{font-weight:700;}
+
+  .tbl-wrap{overflow-x:auto; margin-top:8px;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{background:var(--th-bg); text-align:left; padding:7px 10px; border:1px solid var(--line);
+    white-space:nowrap; font-size:11.5px; color:var(--sub); font-weight:700;}
+  td{padding:7px 10px; border:1px solid var(--line); vertical-align:top;}
+  td b{font-weight:700;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  .policy{background:var(--note-bg); border:1px dashed var(--note-line); border-radius:8px;
+    padding:10px 12px; font-size:12.5px; margin-top:14px;}
+  .policy b{color:var(--note-ink);}
+
+  .pill{display:inline-block; font-size:10.5px; font-weight:800; padding:2px 9px; border-radius:20px; letter-spacing:.02em; white-space:nowrap;}
+  .p0{background:var(--crit-soft); color:var(--crit);}
+  .p1{background:var(--warn-soft); color:var(--warn);}
+  .p2{background:var(--blue-soft); color:var(--blue);}
+  .ok{background:var(--good-soft); color:var(--good);}
+  .gap{background:var(--accent-soft); color:var(--accent-d);}
+
+  .flow{display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; margin-top:8px;}
+  .fnode{background:var(--blue-soft); border:1px solid var(--line); color:var(--blue); border-radius:8px; padding:7px 12px; font-weight:600; white-space:nowrap;}
+  .fnode.hot{background:var(--accent-soft); color:var(--accent-d); border-color:var(--accent);}
+  .farrow{color:var(--sub); font-weight:700;}
+
+  .schema{background:var(--code-bg); border:1px solid var(--line); border-radius:10px;
+    padding:14px 16px; font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:12px;
+    line-height:1.7; overflow-x:auto; margin-top:8px; white-space:pre;}
+  .schema .k{color:var(--blue);}
+  .schema .c{color:var(--sub);}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .mini{border:1px solid var(--line); border-radius:10px; padding:14px 16px;}
+  .mini b.t{display:block; font-size:12.5px; margin-bottom:6px; color:var(--ink);}
+  .mini p{font-size:12px; color:var(--sub);}
+
+  footer{max-width:1080px; margin:0 auto; padding:0 24px 60px; font-size:11.5px; color:var(--sub);}
+  a{color:var(--blue);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+</style>
+
+<header class="doc">
+  <h1>👶 BabyStudio.ai 고도화 기획서 — 세계 수준 서비스를 위한 격차 정의</h1>
+  <p class="tag">MVP(v1.1 기획 반영분) 이후, "온라인 베이비 스튜디오"의 글로벌 레퍼런스로 인정받기 위해 필요한 고도화 요소 전체를 정의한다. 축은 다섯 가지 — <b>운영(어드민·프롬프트 컨트롤)</b>, 생성 품질, 사용자 경험, 신뢰·컴플라이언스, 수익·인프라.</p>
+  <div class="meta">
+    <span>버전 v2.0</span><span>2026-08-20</span><span>작성: 시절 × Claude</span>
+    <span>선행 문서: babystudio_기획서.md(v1.1) · 화면기획서 · 디자인시안</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#north">0 북극성·격차</a>
+  <a href="#admin">1 어드민 콘솔</a>
+  <a href="#prompt">1.1 프롬프트 컨트롤 센터 ★</a>
+  <a href="#theme-ops">1.2 테마 라이프사이클</a>
+  <a href="#moderation">1.3 모더레이션</a>
+  <a href="#ops-dash">1.4 운영·CS</a>
+  <a href="#rbac">1.5 권한·거버넌스</a>
+  <a href="#quality">2 생성 품질</a>
+  <a href="#ux">3 사용자 경험</a>
+  <a href="#trust">4 신뢰·컴플라이언스</a>
+  <a href="#growth">5 수익·성장</a>
+  <a href="#infra">6 인프라·데이터</a>
+  <a href="#roadmap">7 우선순위 로드맵</a>
+</nav>
+
+<main>
+
+<!-- ═══════════ 0 ═══════════ -->
+<section class="sec" id="north">
+  <div class="sec-head"><span class="no">0</span><h2>북극성 — "세계적 인정"의 조작적 정의와 현재 격차</h2></div>
+  <div class="sec-body">
+    <p class="lead">"세계적으로 인정받는 완벽한 사이트"는 감상이 아니라 측정 가능한 4개 조건으로 정의한다. 이 문서의 모든 고도화 항목은 아래 조건 중 하나 이상에 복무하며, 그렇지 않은 기능은 넣지 않는다.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>조건</th><th>측정 지표 (북극성 KPI)</th><th>세계 수준 기준</th><th>현재 상태</th></tr>
+      <tr><td><b>① 품질 일관성</b> — 누가 언제 생성해도 스튜디오급</td><td>얼굴 유사도 스코어 평균 / 베스트컷 선택률 / 재생성률</td><td class="num">유사도 0.82+ · 선택률 65%+ · 재생성 15%↓</td><td><span class="pill gap">측정 체계 없음</span></td></tr>
+      <tr><td><b>② 운영 속도</b> — 테마가 곧 상품, 상품 출시가 곧 성장</td><td>신규 테마 릴리즈 주기 / 프롬프트 개선 리드타임</td><td class="num">주 2회 릴리즈 · 개선 반영 &lt;24h (무배포)</td><td><span class="pill gap">CMS 없음(코드 상수)</span></td></tr>
+      <tr><td><b>③ 신뢰</b> — 아동 데이터 서비스의 존재 조건</td><td>삭제 이행 시간 / C2PA 커버리지 / 모더레이션 SLA</td><td class="num">삭제 &lt;1h 증명 · 커버리지 100% · 리뷰 &lt;2h</td><td><span class="pill gap">정책 문구만 존재</span></td></tr>
+      <tr><td><b>④ 단위 경제성</b> — 원가를 아는 회사만 살아남는다</td><td>잡당 마진 / 원가 실시간 가시성 / 실패 환불 정합성</td><td class="num">잡당 마진 실시간 · 원가 경보 자동화</td><td><span class="pill gap">대시보드 없음</span></td></tr>
+    </table></div>
+    <div class="policy"><b>문서 원칙</b> — 각 섹션은 "무엇을(기능) → 왜(어느 조건에 복무) → 어떻게 측정"의 순서로 기술한다. 우선순위는 <span class="pill p0">P0 출시 전 필수</span> <span class="pill p1">P1 3개월</span> <span class="pill p2">P2 6개월+</span> 3단계로 §7에 종합한다.</div>
+  </div>
+</section>
+
+<!-- ═══════════ 1 ═══════════ -->
+<section class="sec" id="admin">
+  <div class="sec-head"><span class="no">1</span><h2>어드민 콘솔 (S12 확장) — 운영이 곧 제품이다</h2><span class="why">복무: ①②③④ 전부</span></div>
+  <div class="sec-body">
+    <p class="lead">Higgsfield·PhotoAI급 서비스의 공통점은 "새 앱(테마)을 코드 배포 없이 찍어내는 내부 공장"을 가졌다는 것. S12를 단일 화면이 아닌 <b>7개 모듈의 콘솔 제품</b>으로 승격한다. 사용자 화면(S01~S11)이 매출을 만들고, 어드민이 매출의 기울기를 만든다.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>모듈</th><th>화면 ID</th><th>한 줄 정의</th><th>우선순위</th></tr>
+      <tr><td>대시보드</td><td class="mono">S12-A</td><td>오늘의 잡·매출·원가·전환·경보 요약 (운영자의 홈)</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td><b>프롬프트 컨트롤 센터</b></td><td class="mono">S12-B</td><td>프롬프트 버저닝·실험·승격·안전 가드 (§1.1 ★핵심)</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td>테마 라이프사이클 CMS</td><td class="mono">S12-C</td><td>테마 등록→QA→소프트런치→GA→시즌 스케줄→은퇴</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td>실험 플랫폼</td><td class="mono">S12-D</td><td>프롬프트/가격/UI 카피 A/B — 지표 자동 집계·자동 승격</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td>모더레이션 큐</td><td class="mono">S12-E</td><td>안전필터 플래그 검수·신고 처리·제재 (§1.3)</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td>사용자·CS 콘솔</td><td class="mono">S12-F</td><td>사용자 360 조회, 크레딧 수동 조정(원장), 잡 재실행</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td>매출·원가 분석</td><td class="mono">S12-G</td><td>퍼널·코호트·LTV·테마별 손익 (§1.4)</td><td><span class="pill p1">P1</span></td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══════════ 1.1 ═══════════ -->
+<section class="sec" id="prompt">
+  <div class="sec-head"><span class="no">1.1</span><h2>프롬프트 컨트롤 센터 (S12-B) — 본 기획의 핵심</h2><span class="why">복무: ①품질 ②속도 ③신뢰</span></div>
+  <div class="sec-body">
+    <p class="lead">이 서비스에서 프롬프트는 설정값이 아니라 <b>재고 자산이자 레시피</b>다. "잘 나오는 프롬프트"가 곧 베스트컷 선택률이고, 선택률이 곧 전환율이다. 따라서 프롬프트는 ⑴ 버전 관리되고 ⑵ 실험으로 검증되고 ⑶ 안전장치 아래에서만 배포되는, 코드와 동급의 배포 단위로 다룬다. 사용자는 끝까지 프롬프트를 보지 못한다(v1.1 원칙 유지) — 통제권은 전부 이 콘솔에 있다.</p>
+
+    <h3>A. 데이터 모델 — 프롬프트 템플릿의 구조</h3>
+    <div class="schema"><span class="k">PromptTemplate</span> {
+  themeId, <span class="k">version</span>: "dol-hanbok@v14",        <span class="c">// 테마당 버전 체인, 불변(immutable)</span>
+  status: draft | testing | canary | live | archived,
+  positive: "template with {outfit} {background} {age_style}…",
+  negativeChain: [global.negative, milestone.negative, theme.negative],
+                                            <span class="c">// 3단 상속 — 글로벌은 편집 시 전 테마 재검증</span>
+  safetyLayer: LOCKED,                      <span class="c">// 아동 안전 네거티브 — 콘솔에서 편집 불가, 시스템 강제 주입</span>
+  variables: { outfit: vocabRef, background: vocabRef, age_style: auto(생일→개월수) },
+  modelParams: { engine, sampler, steps, cfg, loraWeight, resolution, seedPolicy },
+  metrics: { bestCutRate, regenRate, hiResConvRate, failRate, costPerCut },
+  audit: { author, approver, changedAt, diffRef }   <span class="c">// 모든 변경 2인 승인 + 감사로그</span>
+}</div>
+
+    <h3>B. 기능 정의</h3>
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>기능</th><th>내용</th><th>우선순위</th></tr>
+      <tr><td class="mono">PC-01</td><td><b>버저닝 &amp; diff &amp; 롤백</b></td><td>프롬프트·파라미터의 모든 저장은 새 버전 생성(Git 방식). 버전 간 diff 뷰(텍스트+파라미터), 원클릭 롤백. live 버전은 삭제 불가.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">PC-02</td><td><b>변수 어휘 사전(Vocabulary)</b></td><td>사용자 옵션(의상 "연분홍")→프롬프트 조각("pale pink saekdong hanbok…") 매핑 테이블을 테마와 분리 관리. 조각 하나 개선이 여러 테마에 동시 반영. 금지 조합 규칙(예: 특정 의상×배경) 정의.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">PC-03</td><td><b>네거티브 3단 상속</b></td><td>글로벌(해부학적 결함·워터마크 텍스트 등) → 마일스톤(신생아 체형 규칙 등) → 테마 순 상속. 하위는 추가만 가능, 상위 삭제 불가.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">PC-04</td><td><b>안전 가드 (아동 보호 레이어)</b></td><td>③신뢰의 기술적 구현: ⑴ 안전 네거티브는 시스템이 강제 주입하며 콘솔에서 열람만 가능 ⑵ 금지 토큰 린터가 저장 시점에 positive를 검사(노출·성적 맥락·실존 인물 등) ⑶ 위반 시 저장 자체가 차단되고 보안팀 알림.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">PC-05</td><td><b>플레이그라운드</b></td><td>내부 테스트 프로필(동의받은 모델 컷) 3종으로 즉시 생성해보는 샌드박스. 시드 고정 4컷 그리드로 버전 간 나란히 비교(A안/B안 blind 라벨). 생성 원가는 운영 예산 계정으로 분리 집계.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">PC-06</td><td><b>A/B/n 실험 &amp; 자동 승격</b></td><td>버전별 트래픽 스플릿(예: v14 90% / v15 10%). 지표는 사용자 행동에서 자동 수집 — 베스트컷 선택률·재생성률·고해상도 전환율·공유율. 최소 표본(테마당 200잡) 도달 + 유의성 확보 시 승자 자동 승격, 열세 버전 자동 종료(멀티암드 밴딧으로 손실 최소화).</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">PC-07</td><td><b>카나리 배포</b></td><td>새 버전은 GA 전 반드시 canary 5% 단계를 거침. 실패율·유사도 스코어가 기준 미달이면 자동 롤백 + 슬랙 경보.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">PC-08</td><td><b>멀티모델 라우팅</b></td><td>테마별 생성 엔진 선택(Flux LoRA fine-tune / InstantID zero-shot / 외부 API). 엔진별 파라미터 프리셋, 장애 시 대체 엔진 페일오버, 엔진별 원가·품질 비교 리포트 → 벤더 협상 카드.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">PC-09</td><td><b>성과 대시보드</b></td><td>테마×버전 매트릭스로 KPI·원가 한눈에. "선택률 급락" 자동 감지(모델 벤더의 조용한 모델 변경 탐지 목적).</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">PC-10</td><td><b>커스텀 컨셉 파이프라인</b></td><td>구독자 자연어 요청(v1.1 T-05) → LLM이 내부 템플릿 형식으로 변환 → 안전 린터 통과분만 생성. 반복 요청 패턴은 신규 테마 후보로 자동 큐잉(수요 기반 테마 기획).</td><td><span class="pill p2">P2</span></td></tr>
+    </table></div>
+
+    <h3>C. 운영 워크플로 — 프롬프트의 일생</h3>
+    <div class="flow">
+      <span class="fnode">draft 작성·린트</span><span class="farrow">→</span>
+      <span class="fnode">플레이그라운드 QA (시드 고정 비교)</span><span class="farrow">→</span>
+      <span class="fnode">2인 승인 (4-eyes)</span><span class="farrow">→</span>
+      <span class="fnode hot">canary 5% (24~48h)</span><span class="farrow">→</span>
+      <span class="fnode hot">A/B 유의성 도달</span><span class="farrow">→</span>
+      <span class="fnode">live 승격 (무배포 즉시 반영)</span><span class="farrow">→</span>
+      <span class="fnode">상시 모니터링 → 열화 감지 시 자동 롤백</span>
+    </div>
+    <div class="policy"><b>안전 불변식</b> — ⑴ 안전 레이어를 우회하는 경로는 콘솔에 존재하지 않는다(관리자 포함) ⑵ 모든 live 반영은 감사로그에 승인자 2인이 남는다 ⑶ 프롬프트 원문은 사용자 단말로 절대 전송되지 않는다(서버 조립) — 유출 시 모방 서비스에 레시피를 통째로 넘기는 것과 같다.</div>
+  </div>
+</section>
+
+<!-- ═══════════ 1.2 ═══════════ -->
+<section class="sec" id="theme-ops">
+  <div class="sec-head"><span class="no">1.2</span><h2>테마 라이프사이클 CMS (S12-C)</h2><span class="why">복무: ②속도 ④경제성</span></div>
+  <div class="sec-body">
+    <p class="lead">"신규 테마 주 2회"(v1.1 운영 원칙)를 사람 손이 아닌 파이프라인으로 보장한다. 테마 = 프롬프트 템플릿(§1.1) + 스토어 메타데이터(이 섹션)의 합성물.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>기능</th><th>내용</th></tr>
+      <tr><td class="mono">TC-01</td><td>라이프사이클 상태기계</td><td><code>draft → 내부QA → soft-launch(노출 5%) → GA → seasonal-hold → sunset</code>. 상태 전이마다 체크리스트(샘플 컷 6종·번역·가격·안전 리뷰) 강제.</td></tr>
+      <tr><td class="mono">TC-02</td><td>시즌 캘린더</td><td>연간 시즌 맵(설·벚꽃·여름·핼러윈·크리스마스)에 테마를 배치하면 노출 시작/종료·D-n 뱃지·얼리액세스(멤버십)가 자동 스케줄링.</td></tr>
+      <tr><td class="mono">TC-03</td><td>노출 랭킹 튜너</td><td>정렬 가중치(시즌&gt;인기&gt;신규) 슬라이더 + 수동 핀(트렌딩 고정). 변경은 즉시 반영·이력 기록.</td></tr>
+      <tr><td class="mono">TC-04</td><td>테마 단위 가격·프로모션</td><td>테마별 크레딧 가격, 기간 한정 할인, 번들(마일스톤 패키지) 구성. 쿠폰 코드 발급·사용량 추적.</td></tr>
+      <tr><td class="mono">TC-05</td><td>현지화 워크벤치</td><td>테마명·설명·옵션 라벨의 다국어(한/영/일) 관리. 미번역 상태는 해당 로케일에 노출 차단.</td></tr>
+      <tr><td class="mono">TC-06</td><td>에셋 파이프라인</td><td>커버 루핑 영상·샘플 컷 업로드 → 자동 트랜스코딩(WebM/MP4, 3해상도)·포스터 추출·CDN 배포. "샘플은 동의받은 모델 컷만" 체크 강제.</td></tr>
+    </table></div>
+    <div class="policy"><b>운영 지표</b> — 테마 기획→GA 리드타임(목표 5영업일), 테마별 첫 72h 실행수·전환율로 조기 성과 판정, 하위 10% 테마 분기별 sunset.</div>
+  </div>
+</section>
+
+<!-- ═══════════ 1.3 ═══════════ -->
+<section class="sec" id="moderation">
+  <div class="sec-head"><span class="no">1.3</span><h2>모더레이션 &amp; 안전 운영 (S12-E)</h2><span class="why">복무: ③신뢰 — 존재 조건</span></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>기능</th><th>내용</th></tr>
+      <tr><td class="mono">MD-01</td><td>3중 필터 아키텍처</td><td>⑴ 업로드 시점(얼굴 검출·연령 추정·부적절 이미지) ⑵ 프롬프트 시점(§1.1 PC-04 린터) ⑶ 생성물 시점(NSFW·결함 분류기). 각 단계 차단 사유를 구조화 로깅.</td></tr>
+      <tr><td class="mono">MD-02</td><td>휴먼 리뷰 큐</td><td>필터가 확신 못 하는 회색지대만 사람에게 — 우선순위 큐, 리뷰 SLA 2h, 승인/차단/에스컬레이션 3버튼. 리뷰 결정은 필터 재학습 데이터로 환류.</td></tr>
+      <tr><td class="mono">MD-03</td><td>신고 채널</td><td>공유 페이지·앨범에 신고 버튼 → 큐 유입. 접수·처리 결과 신고자 통보(신뢰 마케팅 요소).</td></tr>
+      <tr><td class="mono">MD-04</td><td>제재 래더</td><td>경고 → 기능 제한 → 계정 정지 → 데이터 파기·차단. 모든 제재는 사유 코드와 함께 감사로그.</td></tr>
+      <tr><td class="mono">MD-05</td><td>CSAM 대응 프로토콜</td><td>탐지 시 즉시 보존·격리·기관 신고(국내 수사기관/NCMEC) 절차 문서화 + 담당자 지정. 글로벌 진출의 전제조건.</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══════════ 1.4 ═══════════ -->
+<section class="sec" id="ops-dash">
+  <div class="sec-head"><span class="no">1.4</span><h2>운영 대시보드 &amp; CS 콘솔 (S12-A·F·G)</h2><span class="why">복무: ④경제성</span></div>
+  <div class="sec-body">
+    <div class="grid2">
+      <div class="mini"><b class="t">실시간 잡 모니터 (S12-A)</b><p>큐 대기 길이, 생성시간 p50/p95, 실패율, 엔진별 헬스. 임계 초과 시 슬랙 경보. "지금 사용자가 몇 초 기다리는가"를 운영자가 항상 안다.</p></div>
+      <div class="mini"><b class="t">원가·마진 라이브 (S12-G)</b><p>외부 API 호출 원가를 잡 단위로 집계 → 잡당 마진, 테마별 손익, 일 원가 예산 소진율. 영상 원가(이미지의 10~30배)는 별도 경보선. 무료 사용자 원가는 CAC로 분류.</p></div>
+      <div class="mini"><b class="t">퍼널·코호트 (S12-G)</b><p>방문→가입→학습완료→첫생성→첫결제 퍼널, 주간 코호트 리텐션, 기념일(백일/돌) 트리거별 전환 기여도. KPI(v1.1 §8)와 1:1 매핑.</p></div>
+      <div class="mini"><b class="t">사용자 360 &amp; CS 도구 (S12-F)</b><p>사용자 검색 → 프로필·잡 이력·크레딧 원장·결제 내역 단일 화면. 크레딧 수동 지급/회수는 사유 코드 필수 + 원장 기록. 실패 잡 원클릭 재실행(사용자 무과금).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 1.5 ═══════════ -->
+<section class="sec" id="rbac">
+  <div class="sec-head"><span class="no">1.5</span><h2>권한 &amp; 거버넌스</h2><span class="why">복무: ③신뢰</span></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>역할</th><th>프롬프트</th><th>테마 CMS</th><th>모더레이션</th><th>사용자/크레딧</th><th>매출</th></tr>
+      <tr><td><b>테마 기획자</b></td><td>작성·실험</td><td>편집</td><td>—</td><td>—</td><td>열람</td></tr>
+      <tr><td><b>리드 (승인자)</b></td><td>승인·롤백</td><td>GA 승인</td><td>에스컬레이션 수신</td><td>—</td><td>열람</td></tr>
+      <tr><td><b>모더레이터</b></td><td>—</td><td>—</td><td>큐 처리</td><td>제재</td><td>—</td></tr>
+      <tr><td><b>CS</b></td><td>—</td><td>—</td><td>신고 접수</td><td>조회·크레딧 조정</td><td>—</td></tr>
+      <tr><td><b>재무/경영</b></td><td>—</td><td>—</td><td>—</td><td>—</td><td>전체</td></tr>
+    </table></div>
+    <ul class="plain" style="margin-top:12px;">
+      <li><b>4-eyes 원칙</b> — live 프롬프트 반영·글로벌 네거티브 수정·대량 크레딧 지급은 작성자≠승인자 2인 필수</li>
+      <li><b>불변 감사로그</b> — 어드민의 모든 쓰기 행위는 append-only 로그(누가·무엇을·왜). 사용자 개인정보 열람도 로깅 대상</li>
+      <li><b>어드민 접근</b> — SSO + 2FA 강제, 세션 IP 고정, 테스트 프로필 외 실사용자 생성물 열람은 모더레이션 사유 있을 때만</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 2 ═══════════ -->
+<section class="sec" id="quality">
+  <div class="sec-head"><span class="no">2</span><h2>생성 품질 고도화 — 인정의 1차 조건</h2><span class="why">복무: ①품질</span></div>
+  <div class="sec-body">
+    <p class="lead">부모의 기준은 "AI치고 잘 나왔다"가 아니라 "스튜디오에서 찍은 우리 아기 같다"이다. 품질을 운에 맡기지 않고 파이프라인으로 보장한다.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>기능</th><th>내용</th><th>우선순위</th></tr>
+      <tr><td class="mono">Q-01</td><td><b>유사도 자동 스코어링</b></td><td>학습 사진 임베딩 vs 생성 컷 임베딩의 얼굴 유사도를 전 컷 자동 측정. 임계치 미달 컷은 노출 전 자동 재생성(내부 재시도, 사용자 무과금). "10컷 요청 → 내부 14컷 생성 → 상위 10컷만 노출"이 기본 정책.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">Q-02</td><td>결함 QC 분류기</td><td>손가락 수·눈 왜곡·신체 비율 이상·텍스트 아티팩트 검출 모델로 자동 필터. 필터 사유는 §1.1 성과 대시보드로 환류(프롬프트 개선 신호).</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">Q-03</td><td>연령 인지 생성</td><td>생일→개월수를 프롬프트 변수로 자동 주입(<code>age_style</code>). 100일 아기와 돌 아기의 체형·자세·표정 문법을 구분 — "우리 애 같지 않다"의 최다 원인 제거.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">Q-04</td><td>"이 느낌 그대로" 재생성</td><td>마음에 든 컷의 시드·구도 파라미터를 보존해 의상/배경만 바꾸는 변형 생성. 베스트컷 경험을 반복 구매로 연결.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">Q-05</td><td>AI 베스트컷 추천</td><td>유사도×심미 스코어(구도·노출·표정)로 베스트 후보 자동 마킹. 사용자의 실제 선택과 비교해 추천 모델 지속 보정.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">Q-06</td><td>가족·형제 멀티 프로필 합성</td><td>프로필 2~4개 동시 조건 생성(가족 단체 컨셉). 얼굴 간 간섭 방지 검증 필수 — 실패율 높으면 별도 엔진 라우팅.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">Q-07</td><td>인쇄급 출력 파이프라인</td><td>4K 업스케일 + 인쇄 프로파일(300DPI·CMYK 소프트프루프) — 굿즈(액자·포토북) 품질의 전제.</td><td><span class="pill p2">P2</span></td></tr>
+    </table></div>
+    <div class="policy"><b>품질 게이트</b> — Q-01·Q-02를 통과 못 한 컷은 사용자에게 절대 노출되지 않는다. 노출 컷 수 부족 시 자동 추가 생성, 그래도 부족하면 크레딧 자동 환불 + 사과 UX. "나쁜 컷을 보여주고 환불"보다 "좋은 컷만 보여주기"가 브랜드를 만든다.</div>
+  </div>
+</section>
+
+<!-- ═══════════ 3 ═══════════ -->
+<section class="sec" id="ux">
+  <div class="sec-head"><span class="no">3</span><h2>사용자 경험 고도화</h2><span class="why">복무: ①품질 체감 ②전환</span></div>
+  <div class="sec-body">
+    <h3>3.1 온보딩 — 첫 5분의 마법</h3>
+    <ul class="plain">
+      <li><b>실시간 업로드 코치</b> <span class="pill p0">P0</span> — 업로드 즉시 클라이언트에서 블러·조도·얼굴 크기 검사, 부족한 각도("옆모습이 없어요") 실시간 안내. 반려를 학습 후가 아닌 업로드 중에.</li>
+      <li><b>웰컴 매직 컷</b> <span class="pill p1">P1</span> — LoRA 학습(3~10분)을 기다리기 전에 zero-shot 엔진으로 저해상도 1컷을 30초 내 제공 — "된다"는 확신을 먼저 주고 학습을 기다리게 한다.</li>
+      <li><b>학습 대기 활용</b> — 대기 중 테마 위시리스트 담기 → 학습 완료 알림에 위시 테마 딥링크.</li>
+    </ul>
+    <h3>3.2 홈·탐색 개인화</h3>
+    <ul class="plain">
+      <li><b>D-day CRM 저니</b> <span class="pill p0">P0</span> — 단발 배너를 넘어 시나리오 설계: D-30 "미리 준비" → D-14 패키지 제안 → D-7 시즌 결합 → D-day 축하 무료 1컷 → D+3 앨범 회고. 카카오 알림톡 템플릿과 1:1 매핑.</li>
+      <li><b>추천 랭킹</b> <span class="pill p1">P1</span> — 아기 개월수·과거 실행 테마·유사 코호트 행동 기반 개인화 정렬(콜드스타트는 마일스톤 기본 정렬).</li>
+      <li><b>검색 고도화</b> <span class="pill p2">P2</span> — 동의어("돌복"="한복")·자연어("바다에서 찍은 것 같은") 시맨틱 검색.</li>
+    </ul>
+    <h3>3.3 결과·공유 — 바이럴 루프의 완성</h3>
+    <ul class="plain">
+      <li><b>공유 랜딩 최적화</b> <span class="pill p0">P0</span> — 공유 페이지에 비포/애프터 인터랙션 + "나도 만들기" CTA + OG 이미지 자동 생성. 공유→가입 전환율을 별도 KPI로(목표 8%).</li>
+      <li><b>리퍼럴 이중 보상</b> <span class="pill p1">P1</span> — 초대자·피초대자 모두 +3컷. 부정 사용(자기 초대) 탐지 규칙 포함.</li>
+      <li><b>자동 하이라이트</b> <span class="pill p1">P1</span> — 월말 "이번 달의 서연이" 자동 콜라주·릴스용 세로 크롭 제공 — 재방문 트리거.</li>
+    </ul>
+    <h3>3.4 기반 품질</h3>
+    <ul class="plain">
+      <li><b>성능 예산</b> <span class="pill p0">P0</span> — LCP&lt;2.5s·CLS&lt;0.1, 이미지 CDN(AVIF/WebP)+블러 플레이스홀더, 루핑 영상은 뷰포트 진입 시에만 재생(모바일 데이터 배려).</li>
+      <li><b>접근성</b> <span class="pill p1">P1</span> — WCAG 2.1 AA: 키보드 완주, 스크린리더 라벨, 모션 최소화 설정 존중.</li>
+      <li><b>글로벌</b> <span class="pill p2">P2</span> — i18n(영/일), 지역별 마일스톤 문화 대응(백일·돌은 한국 고유 → 글로벌은 "100 days"·"1st birthday" 프레이밍), 웹뷰 앱 패키징.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 4 ═══════════ -->
+<section class="sec" id="trust">
+  <div class="sec-head"><span class="no">4</span><h2>신뢰·컴플라이언스 — 차별화 무기로서의 안전</h2><span class="why">복무: ③신뢰</span></div>
+  <div class="sec-body">
+    <p class="lead">아동 사진 서비스는 안전이 마케팅이다. "우리는 이렇게까지 한다"를 증명 가능한 형태로 만들어 전면에 세운다.</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>항목</th><th>내용</th><th>우선순위</th></tr>
+      <tr><td class="mono">TR-01</td><td><b>삭제 영수증</b></td><td>원본 삭제·전체 파기 실행 시 삭제 대상 해시·시각을 서명한 증명서를 사용자에게 발급. "즉시 삭제"를 문구가 아닌 증거로.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">TR-02</td><td>C2PA 전수 서명</td><td>이미지·영상 전 산출물에 C2PA 메타데이터 + 가시 표시. 커버리지 100%를 상태 페이지에 공개.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">TR-03</td><td>데이터 대시보드 (사용자용)</td><td>마이페이지에서 "내 데이터 현황" — 보유 중인 모델·생성물·삭제 이력 열람. GDPR 열람권·이동권 대응 겸용.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">TR-04</td><td>법규 매트릭스</td><td>개인정보보호법(만 14세 법정대리인 동의)·GDPR(글로벌)·COPPA(미국) 요건 매핑 + 아동 데이터 DPIA 문서화. 글로벌 앱스토어 심사 대비.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">TR-05</td><td>워터마크 포렌식</td><td>무료 컷 워터마크에 비가시 식별자 삽입 — 무단 상업 이용·유출 추적 가능.</td><td><span class="pill p2">P2</span></td></tr>
+      <tr><td class="mono">TR-06</td><td>투명성 리포트</td><td>분기별 공개: 모더레이션 처리 건수·삭제 이행 시간·신고 처리율. 언론·파트너 신뢰 자산.</td><td><span class="pill p2">P2</span></td></tr>
+      <tr><td class="mono">TR-07</td><td>보안 기반</td><td>생성물 서명 URL 만료(기본 24h), 학습 모델 아티팩트 암호화 저장, rate limit·WAF, 연 1회 침투 테스트, SOC 2 Type II 로드맵(B2B 전제).</td><td><span class="pill p1">P1</span></td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══════════ 5 ═══════════ -->
+<section class="sec" id="growth">
+  <div class="sec-head"><span class="no">5</span><h2>수익·성장 고도화</h2><span class="why">복무: ④경제성</span></div>
+  <div class="sec-body">
+    <div class="grid2">
+      <div class="mini"><b class="t">가격 실험 플랫폼 <span class="pill p1">P1</span></b><p>패키지 가격·크레딧 팩 구성·첫 결제 할인의 A/B를 S12-D에서 운영(신규 사용자 한정, 기존 사용자 가격 불변 원칙). 지역별 가격(PPP) 준비.</p></div>
+      <div class="mini"><b class="t">구독 리텐션 설계 <span class="pill p1">P1</span></b><p>해지 시 다운그레이드 오퍼 1회(연 플랜 할인 or 일시정지 1~3개월). 다크패턴 금지 원칙(2클릭 해지) 유지 — 신뢰가 LTV보다 크다.</p></div>
+      <div class="mini"><b class="t">기념일 커머스 확장 <span class="pill p2">P2</span></b><p>굿즈(액자·포토북·초대장) 인쇄 API 파트너 연동 — Q-07 인쇄 파이프라인 전제. 조부모 공유앨범→굿즈 선물 동선(결제자≠업로더 허용).</p></div>
+      <div class="mini"><b class="t">B2B·화이트라벨 <span class="pill p2">P2</span></b><p>산후조리원·소아과 제휴 코드(무료 패키지 증정→전환 추적), 스튜디오 화이트라벨(오프라인 스튜디오의 디지털 부가상품화 — 경쟁자를 채널로).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 6 ═══════════ -->
+<section class="sec" id="infra">
+  <div class="sec-head"><span class="no">6</span><h2>인프라·데이터 기반</h2><span class="why">복무: ①②④의 토대</span></div>
+  <div class="sec-body">
+    <div class="tbl-wrap"><table>
+      <tr><th>ID</th><th>항목</th><th>내용</th><th>우선순위</th></tr>
+      <tr><td class="mono">IN-01</td><td><b>잡 오케스트레이션</b></td><td>우선순위 큐(유료&gt;무료, 익스프레스 최우선), 지수 백오프 재시도, 데드레터 큐 + S12-A 노출, 멱등 처리(중복 과금 방지).</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">IN-02</td><td><b>크레딧 원장 정합성</b></td><td>append-only 원장 + hold/confirm/refund 상태기계(v1.1 §7.2) + 일 배치 리컨실(원장 합계 vs 결제 게이트웨이 대사). 불일치 자동 경보.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">IN-03</td><td>config-as-data</td><td>프롬프트·테마·가격·랭킹 가중치는 전부 데이터로 — 코드 배포 없이 콘솔 저장 즉시 반영(§1.1~1.2의 기술 전제). 변경 이력 = 감사로그.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">IN-04</td><td>이벤트 트래킹 스키마</td><td>퍼널·실험·품질 지표의 단일 이벤트 사전(예: <code>theme_run</code>, <code>best_cut_pick</code>, <code>regen</code>, <code>share_visit_signup</code>). 스키마 버전 관리 — 실험 플랫폼(S12-D)의 원료.</td><td><span class="pill p0">P0</span></td></tr>
+      <tr><td class="mono">IN-05</td><td>관측성·SLO</td><td>OpenTelemetry 계측, SLO 정의: 생성 p95 &lt; 3분·잡 실패율 &lt; 2%·API 가용성 99.9%. 에러 버짓 소진 시 신규 릴리즈 동결 규칙.</td><td><span class="pill p1">P1</span></td></tr>
+      <tr><td class="mono">IN-06</td><td>멀티 벤더 전략</td><td>생성 API 벤더 2원화 + 트래픽 비율 콘솔 제어(PC-08과 연동). 물량 기반 단가 협상 → 자체 GPU 전환 판단은 월 원가 데이터로(v1.1 V3).</td><td><span class="pill p1">P1</span></td></tr>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═══════════ 7 ═══════════ -->
+<section class="sec" id="roadmap">
+  <div class="sec-head"><span class="no">7</span><h2>우선순위 로드맵 — 무엇부터, 왜</h2></div>
+  <div class="sec-body">
+    <p class="lead">기준: 북극성 4조건 기여도 × 선행 의존성. P0는 "이것 없이는 스케일하면 안 되는 것", P1은 "성장의 기울기를 만드는 것", P2는 "해자를 깊게 하는 것".</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>단계</th><th>기간</th><th>범위</th><th>완료 판정 지표</th></tr>
+      <tr>
+        <td><span class="pill p0">P0</span><br><b>운영 가능 상태</b></td><td class="num">~2개월</td>
+        <td>프롬프트 컨트롤 센터 코어(PC-01~05) · 테마 CMS 상태기계(TC-01·02·06) · 품질 게이트(Q-01~03) · 모더레이션 3중 필터+큐(MD-01·02) · 삭제 영수증·C2PA(TR-01·02) · 원장·오케스트레이션·이벤트 스키마(IN-01~04) · D-day CRM 저니 · 공유 랜딩 · 성능 예산</td>
+        <td class="num">프롬프트 개선 리드타임 &lt;24h · 유사도 측정 커버리지 100% · 삭제 &lt;1h</td>
+      </tr>
+      <tr>
+        <td><span class="pill p1">P1</span><br><b>성장 기울기</b></td><td class="num">3~4개월</td>
+        <td>A/B 자동 승격+카나리(PC-06·07) · 멀티모델 라우팅(PC-08·IN-06) · 실험 플랫폼(S12-D) · CS 콘솔(S12-F) · 웰컴 매직 컷 · 추천 랭킹 · 리퍼럴 · 시드 재사용(Q-04) · 가족 합성(Q-06) · 가격 실험 · SLO·보안 기반(TR-07)</td>
+        <td class="num">베스트컷 선택률 65%+ · 무료→유료 전환 8%+ · K-factor 0.4</td>
+      </tr>
+      <tr>
+        <td><span class="pill p2">P2</span><br><b>해자</b></td><td class="num">5~8개월</td>
+        <td>커스텀 컨셉 파이프라인(PC-10) · 인쇄 파이프라인+굿즈(Q-07) · 워터마크 포렌식·투명성 리포트(TR-05·06) · i18n·글로벌 마일스톤 프레이밍 · B2B 화이트라벨 · 시맨틱 검색</td>
+        <td class="num">굿즈 attach rate 5% · 글로벌 매출 비중 15% · SOC 2 착수</td>
+      </tr>
+    </table></div>
+    <div class="policy"><b>단 하나만 고른다면</b> — 프롬프트 컨트롤 센터(§1.1)다. 품질(①)·속도(②)·안전(③)이 전부 이 콘솔을 통과하며, 경쟁사가 베낄 수 있는 것은 화면이지 "검증된 프롬프트 자산 + 그것을 개선하는 실험 루프"가 아니다. 이 루프의 회전 속도가 곧 해자다.</div>
+  </div>
+</section>
+
+</main>
+<footer>BabyStudio.ai 고도화 기획서 v2.0 — 본 문서는 기능·정책 정의서이며, 어드민 화면별 상세 와이어프레임(S12-A~G)은 승인 후 화면기획서 v2로 후속 작성한다.</footer>
